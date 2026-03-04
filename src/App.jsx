@@ -916,14 +916,17 @@ export default function ClarionFinal() {
   const loadAI = async () => {
     setAiLoading(true);
     try {
-      const res = await fetch("https://clarion-proxy.vercel.app/api/gnews?max=20");
+      // Fetch real articles from GNews
+      const res = await fetch("https://clarion-proxy.vercel.app/api/gnews?max=10");
       const json = await res.json();
       const articles = (json.articles || []).filter(a => a.title && a.url);
+
       if (articles.length > 0) {
-        const mapped = articles.map((a, i) => ({
+        // Show articles immediately while Claude enriches them
+        const initial = articles.map((a, i) => ({
           id: 200 + i,
           headline: a.title,
-          summary: a.description || a.content || "",
+          summary: a.description || "",
           source: a.source?.name || "Unknown",
           url: a.url,
           image: a.image || null,
@@ -935,10 +938,33 @@ export default function ClarionFinal() {
           region: "National",
           verified: true,
         }));
-        setAiArticles(mapped);
+        setAiArticles(initial);
+
+        // Now enrich with Claude for lean, category, region, breaking
+        const lines = articles.map((a, i) =>
+          `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}" | Desc: "${a.description||""}"`
+        ).join("\n");
+
+        const enriched = await callClaude(
+          `Analyze these ${articles.length} real news headlines and return ONLY a JSON array with one object per headline in the same order. Each object: lean (left/center/right based on source reputation and framing), category (Politics/Tech/Business/Science/Uplifting/Breaking), region (most specific US city or National), breaking (boolean — true only if urgent breaking news).\n\n${lines}`
+        );
+
+        const clean = enriched.replace(/\`\`\`json|\`\`\`/g, "").trim();
+        const match = clean.match(/\[[\s\S]*\]/);
+        if (match) {
+          const tags = JSON.parse(match[0]);
+          const enrichedArticles = initial.map((a, i) => ({
+            ...a,
+            lean: tags[i]?.lean || "center",
+            category: tags[i]?.category || "Breaking",
+            region: tags[i]?.region || "National",
+            breaking: tags[i]?.breaking || false,
+          }));
+          setAiArticles(enrichedArticles);
+        }
       }
     } catch (e) {
-      console.error("GNews fetch failed:", e);
+      console.error("loadAI failed:", e);
     }
     setAiLoading(false);
   };
