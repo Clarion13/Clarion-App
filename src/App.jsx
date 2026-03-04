@@ -49,7 +49,7 @@ const glassBtn = solidBtn;
 
 const ARTICLES = [];
 
-const CATS = ["All","Breaking","Politics","Tech","Business","Science","Uplifting"];
+const CATS = ["All","Breaking","Politics","Tech","Business","Science","World","Health","Uplifting"];
 const NAV  = [
   {id:"feed",       label:"Feed"},
   {id:"map",        label:"Map"},
@@ -916,13 +916,13 @@ export default function ClarionFinal() {
   const loadAI = async () => {
     setAiLoading(true);
     try {
-      // Fetch real articles from GNews
-      const res = await fetch("https://clarion-proxy.vercel.app/api/gnews?max=10");
+      // Fetch from multiple categories in parallel via proxy
+      const res = await fetch("https://clarion-proxy.vercel.app/api/gnews");
       const json = await res.json();
-      const articles = (json.articles || []).filter(a => a.title && a.url);
+      const articles = (json.articles || []).filter(a => a.title && a.url).slice(0, 40);
 
       if (articles.length > 0) {
-        // Show articles immediately while Claude enriches them
+        // Show articles immediately
         const initial = articles.map((a, i) => ({
           id: 200 + i,
           headline: a.title,
@@ -940,27 +940,34 @@ export default function ClarionFinal() {
         }));
         setAiArticles(initial);
 
-        // Now enrich with Claude for lean, category, region, breaking
-        const lines = articles.map((a, i) =>
-          `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}" | Desc: "${a.description||""}"`
-        ).join("\n");
+        // Enrich with Claude — lean, category, region, breaking
+        const lineList = articles.map((a, i) =>
+          `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}" | Desc: "${(a.description||"").slice(0,120)}"`
+        ).join("
+");
 
         const enriched = await callClaude(
-          `Analyze these ${articles.length} real news headlines and return ONLY a JSON array with one object per headline in the same order. Each object: lean (left/center/right based on source reputation and framing), category (Politics/Tech/Business/Science/Uplifting/Breaking), region (most specific US city or National), breaking (boolean — true only if urgent breaking news).\n\n${lines}`
+          `You are a news editor. Analyze these ${articles.length} real headlines and return ONLY a JSON array (same order, no extra text). Each object must have:
+- lean: "left" / "center" / "right" (based on source reputation AND headline framing — e.g. Fox/WSJ/Breitbart lean right, NYT/Guardian/NPR lean left, Reuters/AP/BBC are center)
+- category: one of Politics / Tech / Business / Science / Uplifting / Breaking / World / Health
+- region: most specific US city (e.g. "Washington D.C.", "New York", "Los Angeles") or country name for international, or "National"
+- breaking: true only if genuinely urgent breaking news
+
+Headlines:
+${lineList}`
         );
 
         const clean = enriched.replace(/\`\`\`json|\`\`\`/g, "").trim();
         const match = clean.match(/\[[\s\S]*\]/);
         if (match) {
           const tags = JSON.parse(match[0]);
-          const enrichedArticles = initial.map((a, i) => ({
+          setAiArticles(initial.map((a, i) => ({
             ...a,
             lean: tags[i]?.lean || "center",
             category: tags[i]?.category || "Breaking",
             region: tags[i]?.region || "National",
             breaking: tags[i]?.breaking || false,
-          }));
-          setAiArticles(enrichedArticles);
+          })));
         }
       }
     } catch (e) {
