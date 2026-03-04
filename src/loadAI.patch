@@ -1,0 +1,29 @@
+  const loadAI = async () => {
+    setAiLoading(true);
+    try {
+      const res = await fetch("https://clarion-proxy.vercel.app/api/gnews?max=20");
+      const json = await res.json();
+      const articles = (json.articles || []).filter(a => a.title && a.url);
+      if (articles.length > 0) {
+        const mapped = articles.map((a, i) => ({
+          id: 200 + i,
+          headline: a.title,
+          summary: a.description || "",
+          source: a.source?.name || "Unknown",
+          url: a.url,
+          image: a.image || null,
+          publishedAt: a.publishedAt || null,
+          lean: "center",
+          category: "Breaking",
+          time: "Live",
+          breaking: false,
+          region: "National",
+          verified: true,
+        }));
+        setAiArticles(mapped);
+      }
+    } catch (e) {
+      console.error("GNews failed:", e);
+    }
+    setAiLoading(false);
+  };
