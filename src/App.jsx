@@ -943,8 +943,7 @@ export default function ClarionFinal() {
         // Enrich with Claude — lean, category, region, breaking
         const lineList = articles.map((a, i) =>
           `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}" | Desc: "${(a.description||"").slice(0,120)}"`
-        ).join("
-");
+        ).join("\n");
 
         const enriched = await callClaude(
           `You are a news editor. Analyze these ${articles.length} real headlines and return ONLY a JSON array (same order, no extra text). Each object must have:
