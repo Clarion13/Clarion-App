@@ -462,49 +462,56 @@ const CITY_KEYWORDS = {
   "Santiago":         ["santiago","chile","chilean","boric"],
 };
 
+// Returns array of all matched city names for an article
 function geoTagArticle(article) {
-  const text = ((article.headline || "") + " " + (article.summary || "")).toLowerCase();
+  const text = ((article.headline || "") + " " + (article.summary || "") + " " + (article.region || "")).toLowerCase();
+  const matched = new Set();
   for (const [cityName, keywords] of Object.entries(CITY_KEYWORDS)) {
     for (const kw of keywords) {
-      if (text.includes(kw.toLowerCase())) {
-        return cityName;
-      }
+      if (text.includes(kw.toLowerCase())) { matched.add(cityName); break; }
     }
   }
-  return article.region || "National";
+  // Also try fuzzy match on Claude-assigned region
+  if (article.region && article.region !== "National") {
+    const regionCity = fuzzyMatchDirect(article.region);
+    if (regionCity) matched.add(regionCity.name);
+  }
+  return [...matched];
 }
 
-function fuzzyMatch(region) {
+// fuzzyMatch without calling geoTagArticle (avoids circular ref)
+function fuzzyMatchDirect(region) {
   if (!region) return null;
   const r = region.toLowerCase().trim();
   return CITIES.find(c => {
     const n = c.name.toLowerCase();
     if (n === r || r.includes(n) || n.includes(r)) return true;
-    // Special cases
     if (r.includes("d.c") && c.name === "Washington D.C.") return true;
-    if ((r === "washington" || r === "washington, d.c.") && c.name === "Washington D.C.") return true;
+    if ((r === "washington") && c.name === "Washington D.C.") return true;
     if ((r === "uk" || r === "united kingdom" || r === "england" || r === "britain") && c.name === "London") return true;
-    if ((r === "france") && c.name === "Paris") return true;
-    if ((r === "germany") && c.name === "Berlin") return true;
-    if ((r === "russia") && c.name === "Moscow") return true;
-    if ((r === "ukraine") && c.name === "Kyiv") return true;
+    if (r === "france" && c.name === "Paris") return true;
+    if (r === "germany" && c.name === "Berlin") return true;
+    if (r === "russia" && c.name === "Moscow") return true;
+    if (r === "ukraine" && c.name === "Kyiv") return true;
     if ((r === "china" || r === "prc") && c.name === "Beijing") return true;
-    if ((r === "japan") && c.name === "Tokyo") return true;
+    if (r === "japan" && c.name === "Tokyo") return true;
     if ((r === "south korea" || r === "korea") && c.name === "Seoul") return true;
-    if ((r === "taiwan") && c.name === "Taipei") return true;
-    if ((r === "india") && c.name === "New Delhi") return true;
-    if ((r === "australia") && c.name === "Canberra") return true;
-    if ((r === "canada") && c.name === "Ottawa") return true;
-    if ((r === "israel") && c.name === "Tel Aviv") return true;
-    if ((r === "iran") && c.name === "Tehran") return true;
-    if ((r === "saudi arabia") && c.name === "Riyadh") return true;
-    if ((r === "turkey") && c.name === "Istanbul") return true;
-    if ((r === "brazil") && c.name === "Brasilia") return true;
-    if ((r === "pakistan") && c.name === "Islamabad") return true;
-    if ((r === "afghanistan") && c.name === "Kabul") return true;
+    if (r === "taiwan" && c.name === "Taipei") return true;
+    if (r === "india" && c.name === "New Delhi") return true;
+    if (r === "australia" && c.name === "Canberra") return true;
+    if (r === "canada" && c.name === "Ottawa") return true;
+    if (r === "israel" && c.name === "Tel Aviv") return true;
+    if (r === "iran" && c.name === "Tehran") return true;
+    if ((r === "saudi arabia" || r === "saudi") && c.name === "Riyadh") return true;
+    if (r === "turkey" && c.name === "Istanbul") return true;
+    if (r === "brazil" && c.name === "Brasilia") return true;
+    if (r === "pakistan" && c.name === "Islamabad") return true;
+    if (r === "afghanistan" && c.name === "Kabul") return true;
     return false;
   });
 }
+
+const fuzzyMatch = fuzzyMatchDirect;
 
 function HeatMap({ articles, onRegion }) {
   const mapRef = useRef(null);
@@ -512,21 +519,45 @@ function HeatMap({ articles, onRegion }) {
   const markersRef = useRef([]);
   const [selected, setSelected] = useState(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [hoveredLine, setHoveredLine] = useState(null);
 
+  // Build city counts and connection lines from articles
   const cityCount = {};
+  const connections = []; // { from, to, article, color }
+
   articles.forEach(a => {
-    const geoRegion = geoTagArticle(a);
-    const city = fuzzyMatch(geoRegion);
-    if (city) cityCount[city.name] = (cityCount[city.name] || 0) + 1;
+    // Get all locations for this article (from keyword scan + Claude locations array)
+    const kwLocs = geoTagArticle(a);
+    const claudeLocs = (a.locations || []).map(l => fuzzyMatch(l)).filter(Boolean).map(c => c.name);
+    const allLocs = [...new Set([...kwLocs, ...claudeLocs])].map(n => CITIES.find(c => c.name === n)).filter(Boolean);
+
+    // Count each city
+    allLocs.forEach(city => {
+      cityCount[city.name] = (cityCount[city.name] || 0) + 1;
+    });
+
+    // Draw a connection line for each pair of cities in this article
+    if (allLocs.length >= 2) {
+      for (let i = 0; i < allLocs.length - 1; i++) {
+        for (let j = i + 1; j < allLocs.length; j++) {
+          connections.push({
+            from: allLocs[i],
+            to: allLocs[j],
+            article: a,
+            color: leanColor(a.lean),
+          });
+        }
+      }
+    }
   });
 
+  // Initialize Mapbox
   useEffect(() => {
     if (mapInstance.current) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = "https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css";
     document.head.appendChild(link);
-
     const script = document.createElement("script");
     script.src = "https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js";
     script.onload = () => {
@@ -534,10 +565,7 @@ function HeatMap({ articles, onRegion }) {
       const map = new window.mapboxgl.Map({
         container: mapRef.current,
         style: "mapbox://styles/mapbox/light-v11",
-        center: [15, 25],
-        zoom: 1.5,
-        minZoom: 1,
-        maxZoom: 10,
+        center: [15, 25], zoom: 1.5, minZoom: 1, maxZoom: 10,
       });
       map.on("load", () => { setMapLoaded(true); mapInstance.current = map; });
     };
@@ -545,55 +573,151 @@ function HeatMap({ articles, onRegion }) {
     return () => { if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; } };
   }, []);
 
+  // Draw connections + markers whenever articles or map changes
   useEffect(() => {
     if (!mapLoaded || !mapInstance.current) return;
     const map = mapInstance.current;
+
+    // Remove old markers
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
+
+    // --- Draw dashed connection lines via GeoJSON ---
+    // Remove old layers/sources if they exist
+    ["clarion-lines", "clarion-lines-bg"].forEach(id => {
+      if (map.getLayer(id)) map.removeLayer(id);
+    });
+    if (map.getSource("clarion-connections")) map.removeSource("clarion-connections");
+
+    const lineFeatures = connections.map((conn, idx) => ({
+      type: "Feature",
+      properties: { color: conn.color, idx },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [conn.from.lng, conn.from.lat],
+          [conn.to.lng, conn.to.lat],
+        ],
+      },
+    }));
+
+    if (lineFeatures.length > 0) {
+      map.addSource("clarion-connections", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: lineFeatures },
+      });
+      // Subtle glow background line
+      map.addLayer({
+        id: "clarion-lines-bg",
+        type: "line",
+        source: "clarion-connections",
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 3,
+          "line-opacity": 0.08,
+          "line-blur": 4,
+        },
+      });
+      // Dashed foreground line
+      map.addLayer({
+        id: "clarion-lines",
+        type: "line",
+        source: "clarion-connections",
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 1.5,
+          "line-opacity": 0.55,
+          "line-dasharray": [3, 3],
+        },
+      });
+      // Click on line to show article
+      map.on("click", "clarion-lines", (e) => {
+        const idx = e.features[0]?.properties?.idx;
+        if (idx !== undefined && connections[idx]) {
+          setSelected({ type:"line", conn: connections[idx] });
+        }
+      });
+      map.on("mouseenter", "clarion-lines", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "clarion-lines", () => { map.getCanvas().style.cursor = ""; });
+    }
+
+    // --- Draw city dot markers ---
     CITIES.forEach(city => {
       const count = cityCount[city.name] || 0;
       if (count === 0) return;
-      const size = Math.min(14 + count * 6, 44);
+      const size = Math.min(16 + count * 5, 44);
       const el = document.createElement("div");
-      el.style.cssText = `width:${size}px;height:${size}px;background:#E8956D;border:2.5px solid #fff;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:${size > 24 ? 11 : 9}px;font-weight:700;color:#fff;box-shadow:0 2px 12px rgba(232,149,109,0.5);`;
+      el.style.cssText = `
+        width:${size}px;height:${size}px;
+        background:#E8956D;
+        border:2px solid rgba(255,255,255,0.9);
+        border-radius:50%;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;
+        font-size:${size > 26 ? 11 : 9}px;font-weight:700;color:#fff;
+        box-shadow:0 0 0 3px rgba(232,149,109,0.25);
+        transition:transform 0.15s;
+      `;
       el.innerHTML = count;
+      el.onmouseenter = () => { el.style.transform = "scale(1.2)"; };
+      el.onmouseleave = () => { el.style.transform = "scale(1)"; };
       el.addEventListener("click", () => {
-        setSelected(city.name);
+        setSelected({ type:"city", name: city.name });
         onRegion && onRegion(city.name);
-        map.flyTo({ center: [city.lng, city.lat], zoom: 6, speed: 1.2 });
+        map.flyTo({ center: [city.lng, city.lat], zoom: 5, speed: 1.2 });
       });
       const marker = new window.mapboxgl.Marker({ element: el })
-        .setLngLat([city.lng, city.lat])
-        .addTo(map);
+        .setLngLat([city.lng, city.lat]).addTo(map);
       markersRef.current.push(marker);
     });
   }, [mapLoaded, articles]);
 
-  const selectedArticles = selected ? articles.filter(a => fuzzyMatch(geoTagArticle(a))?.name === selected) : [];
+  const selectedArticles = selected?.type === "city"
+    ? articles.filter(a => {
+        const locs = [...geoTagArticle(a), ...(a.locations||[]).map(l=>fuzzyMatch(l)?.name).filter(Boolean)];
+        return locs.includes(selected.name);
+      })
+    : [];
 
   return (
     <div>
-      <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>News Heatmap</h2>
-      <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:"0 0 14px"}}>Stories mapped worldwide. Tap any dot to see local coverage.</p>
-      <div ref={mapRef} style={{width:"100%",height:400,borderRadius:20,overflow:"hidden",marginBottom:16}}/>
+      <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 2px",letterSpacing:"-0.02em"}}>World News Map</h2>
+      <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 12px"}}>
+        Dots show story volume. <span style={{color:C.left,fontWeight:600}}>━━</span> dashed lines connect locations mentioned in the same story.
+      </p>
+      <div ref={mapRef} style={{width:"100%",height:420,borderRadius:20,overflow:"hidden",marginBottom:16,border:`1px solid ${C.border}`}}/>
       {!mapLoaded && <div style={{display:"flex",gap:10,alignItems:"center",justifyContent:"center",padding:"20px 0"}}><Spinner/><span style={{fontFamily:F.text,fontSize:13,color:C.muted}}>Loading map…</span></div>}
-      {selected && selectedArticles.length > 0 && (
+
+      {/* City panel */}
+      {selected?.type === "city" && selectedArticles.length > 0 && (
         <div style={{marginBottom:16}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <p style={{fontFamily:F.display,fontSize:16,fontWeight:700,color:C.text,margin:0}}>📍 {selected}</p>
+            <p style={{fontFamily:F.display,fontSize:16,fontWeight:700,color:C.text,margin:0}}>📍 {selected.name} — {selectedArticles.length} {selectedArticles.length===1?"story":"stories"}</p>
             <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.muted}}>✕</button>
           </div>
-          {selectedArticles.map((a,i)=>(
-            <div key={i} style={{...glass(0.7),borderRadius:14,padding:"12px 14px",marginBottom:8,cursor:"pointer"}} onClick={()=>onRegion&&onRegion(a)}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                <div style={{width:3,height:14,background:leanColor(a.lean),borderRadius:2,flexShrink:0}}/>
-                <span style={{fontFamily:F.text,fontSize:11,color:C.muted}}>{a.source}</span>
-              </div>
-              <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:0,lineHeight:1.4}}>{decodeHTML(a.headline)}</p>
+          {selectedArticles.slice(0,5).map((a,i)=>(
+            <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"12px 14px",marginBottom:8,cursor:"pointer",borderLeft:`3px solid ${leanColor(a.lean)}`}}
+              onClick={()=>onRegion&&onRegion(selected.name)}>
+              <span style={{fontFamily:F.text,fontSize:10,color:C.muted}}>{a.source}</span>
+              <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:"4px 0 0",lineHeight:1.4}}>{decodeHTML(a.headline)}</p>
             </div>
           ))}
         </div>
       )}
+
+      {/* Line click panel */}
+      {selected?.type === "line" && selected.conn && (
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderLeft:`3px solid ${selected.conn.color}`,borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <p style={{fontFamily:F.text,fontSize:12,fontWeight:600,color:C.muted,margin:0}}>
+              {selected.conn.from.name} ↔ {selected.conn.to.name}
+            </p>
+            <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",color:C.muted}}>✕</button>
+          </div>
+          <p style={{fontFamily:F.text,fontSize:14,fontWeight:600,color:C.text,margin:"0 0 6px",lineHeight:1.35}}>{decodeHTML(selected.conn.article.headline)}</p>
+          <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{selected.conn.article.source} · <span style={{color:selected.conn.color,fontWeight:600}}>{selected.conn.article.lean}</span></p>
+        </div>
+      )}
+
       {Object.keys(cityCount).length === 0 && (
         <p style={{fontFamily:F.text,fontSize:14,color:C.muted,textAlign:"center",padding:"20px 0"}}>Stories loading — map will populate shortly.</p>
       )}
@@ -1430,7 +1554,7 @@ export default function ClarionFinal() {
           `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}"`
         ).join("\n");
 
-        const prompt = `Analyze these ${articles.length} news headlines. Return ONLY a JSON array with ${articles.length} objects in the same order. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"US city name OR National OR country name","breaking":true or false}. Base lean on source: Fox News/WSJ/Breitbart=right, NYT/Guardian/NPR/CNN=left, Reuters/AP/BBC/Bloomberg=center.\n\n${lineList}`;
+        const prompt = `Analyze these ${articles.length} news headlines. Return ONLY a JSON array with ${articles.length} objects in the same order. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"primary location city or country name","breaking":true or false,"locations":["up to 3 city or country names mentioned in the story, e.g. Washington D.C., Beijing, Brussels — empty array if purely local or domestic"]}. Base lean on source: Fox News/WSJ/Breitbart=right, NYT/Guardian/NPR/CNN=left, Reuters/AP/BBC/Bloomberg=center.\n\n${lineList}`;
 
         const enriched = await callClaude(prompt);
         const clean = enriched.replace(/\`\`\`json|\`\`\`/g, "").trim();
@@ -1445,6 +1569,7 @@ export default function ClarionFinal() {
               category: tags[i]?.category || "Breaking",
               region: tags[i]?.region || "National",
               breaking: tags[i]?.breaking || false,
+              locations: tags[i]?.locations || [],
             }));
 
             // Use original RSS/GNews images directly
