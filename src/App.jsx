@@ -658,12 +658,13 @@ function HeatMap({ articles, onRegion }) {
         transition:transform 0.15s;
       `;
       el.innerHTML = count;
-      el.onmouseenter = () => { el.style.transform = "scale(1.2)"; };
-      el.onmouseleave = () => { el.style.transform = "scale(1)"; };
-      el.addEventListener("click", () => {
+      // Use mousedown so selection fires before Mapbox moves the map
+      el.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
         setSelected({ type:"city", name: city.name });
         onRegion && onRegion(city.name);
-        map.flyTo({ center: [city.lng, city.lat], zoom: 5, speed: 1.2 });
+        // Delay flyTo so click registers first
+        setTimeout(() => map.flyTo({ center: [city.lng, city.lat], zoom: 5, speed: 1.2 }), 80);
       });
       const marker = new window.mapboxgl.Marker({ element: el })
         .setLngLat([city.lng, city.lat]).addTo(map);
@@ -1517,7 +1518,14 @@ export default function ClarionFinal() {
   const feed=sortedAll.filter(a=>{
     if(category!=="All"&&a.category!==category) return false;
     if(search&&!a.headline.toLowerCase().includes(search.toLowerCase())&&!a.source.toLowerCase().includes(search.toLowerCase())) return false;
-    if(regionFilter&&a.region!==regionFilter) return false;
+    if(regionFilter){
+      // Match against all article locations (keyword-detected + Claude locations)
+      const artLocs = [...(geoTagArticle(a)||[]), ...(a.locations||[]).map(l=>fuzzyMatch(l)?.name).filter(Boolean)];
+      // Also match Claude region field via fuzzyMatch
+      const regionCity = fuzzyMatch(a.region);
+      if(regionCity) artLocs.push(regionCity.name);
+      if(!artLocs.includes(regionFilter)) return false;
+    }
     return true;
   });
 
