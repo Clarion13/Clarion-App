@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Component } from "react";
 
 // ── PASTEL GREEN + CREAM — SOLID PROFESSIONAL ────────────────────
 const LIGHT = {
@@ -297,7 +297,8 @@ function BiasGauge({ history, allArticles }) {
 // ─────────────────────────────────────────────────────────────────
 // HEATMAP — Mapbox interactive map
 // ─────────────────────────────────────────────────────────────────
-const MAPBOX_TOKEN = "pk.eyJ1IjoiY2xhcmlvbjEzIiwiYSI6ImNtbWNxMmxuOTA4dnQycXE1a2h0OWV1ZHUifQ.Vix6Aa28lbFYADZP1uOkFA";
+// Token injected at build time via REACT_APP_MAPBOX_TOKEN env var
+const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN || "pk.eyJ1IjoiY2xhcmlvbjEzIiwiYSI6ImNtbWNxMmxuOTA4dnQycXE1a2h0OWV1ZHUifQ.Vix6Aa28lbFYADZP1uOkFA";
 
 const CITIES = [
   // US Cities
@@ -1505,6 +1506,47 @@ Return ONLY valid JSON:
   );
 }
 
+// ─────────────────────────────────────────────────────────────────
+// ERROR BOUNDARY — catches Claude/fetch failures gracefully
+// ─────────────────────────────────────────────────────────────────
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("Clarion error:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight:"100vh", display:"flex", flexDirection:"column",
+          alignItems:"center", justifyContent:"center",
+          background:"#FFFFFF", padding:32, textAlign:"center",
+          fontFamily:"-apple-system, sans-serif",
+        }}>
+          <div style={{fontSize:40, marginBottom:16}}>📰</div>
+          <p style={{fontSize:22, fontWeight:700, color:"#1A1A18", margin:"0 0 8px"}}>Something went wrong</p>
+          <p style={{fontSize:14, color:"#9A9689", margin:"0 0 24px", lineHeight:1.6, maxWidth:300}}>
+            Clarion hit an unexpected error. Your saved preferences are intact.
+          </p>
+          <button onClick={()=>{ this.setState({hasError:false,error:null}); window.location.reload(); }}
+            style={{background:"#E8956D", border:"none", borderRadius:980, padding:"10px 24px",
+              fontSize:14, fontWeight:600, color:"#fff", cursor:"pointer"}}>
+            Reload App
+          </button>
+          {this.state.error && (
+            <p style={{fontSize:11, color:"#C0BDB8", marginTop:16, fontFamily:"monospace"}}>
+              {this.state.error.message}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Scroll-tracking dots for the carousel
 function CarouselDots({ items, carouselId }) {
   const [active, setActive] = useState(0);
@@ -1532,7 +1574,8 @@ function CarouselDots({ items, carouselId }) {
   );
 }
 
-export default function ClarionFinal() {
+// Wrapped export with error boundary
+function ClarionFinal() {
   const [tab,setTab]=useState("feed");
   const [category,setCategory]=useState("All");
   const [searchInput,setSearchInput]=useState("");
@@ -1585,67 +1628,97 @@ export default function ClarionFinal() {
     setHistory(v=>v.includes(id)?v:[...v,id]);
   };
 
-  const loadAI = async () => {
+  const CACHE_KEY = "clarion_feed_v3";
+  const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+  const loadAI = async (forceRefresh = false) => {
+    // ── CACHE CHECK — serve instantly if fresh ──
+    if (!forceRefresh) {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { ts, articles: ca } = JSON.parse(cached);
+          if (Date.now() - ts < CACHE_TTL && ca?.length > 0) {
+            setAiArticles(ca);
+            setLastUpdated(new Date(ts));
+            setAiLoading(false);
+            return;
+          }
+        }
+      } catch(e) {}
+    }
+
     setAiLoading(true);
+
+    // ── FETCH RSS/GNEWS ──
+    let articles = [];
     try {
       const res = await fetch("https://clarion-proxy.vercel.app/api/gnews");
       const json = await res.json();
-      const articles = (json.articles || []).filter(a => a.title && a.url).slice(0, 40);
+      articles = (json.articles || []).filter(a => a.title && a.url).slice(0, 40);
+    } catch(e) {
+      console.error("Feed fetch failed:", e);
+      setAiLoading(false);
+      return;
+    }
 
-      if (articles.length > 0) {
-        const initial = articles.map((a, i) => ({
-          id: 200 + i,
-          headline: a.title,
-          summary: a.description || "",
-          source: a.source?.name || "Unknown",
-          url: a.url,
-          image: a.image || null,
-          publishedAt: a.publishedAt || null,
-          lean: "center",
-          category: "Breaking",
-          time: "Live",
-          breaking: false,
-          region: "National",
-          verified: true,
-        }));
+    if (articles.length === 0) { setAiLoading(false); return; }
 
-        // Build prompt for Claude enrichment — now also asks for image search query
-        const lineList = articles.map((a, i) =>
-          `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}"`
-        ).join("\n");
+    // ── SHOW ARTICLES IMMEDIATELY (unenriched) so feed appears instantly ──
+    const initial = articles.map((a, i) => ({
+      id: 200 + i,
+      headline: a.title,
+      summary: a.description || "",
+      source: a.source?.name || "Unknown",
+      url: a.url,
+      image: a.image || null,
+      publishedAt: a.publishedAt || null,
+      lean: "center", category: "Breaking", time: "Live",
+      breaking: false, region: "National", verified: true, locations: [],
+    }));
+    setAiArticles(initial);
+    setAiLoading(false); // hide spinner — feed visible, enrichment runs quietly
 
-        const prompt = `Analyze these ${articles.length} news headlines. Return ONLY a JSON array with ${articles.length} objects in the same order. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"primary location city or country name","breaking":true or false,"locations":["up to 3 city or country names mentioned in the story, e.g. Washington D.C., Beijing, Brussels — empty array if purely local or domestic"]}. Base lean on source: Fox News/WSJ/Breitbart=right, NYT/Guardian/NPR/CNN=left, Reuters/AP/BBC/Bloomberg=center.\n\n${lineList}`;
+    // ── ENRICH IN BATCHES OF 15 — first batch appears in ~2s ──
+    const BATCH = 15;
+    const enriched = [...initial];
 
-        const enriched = await callClaude(prompt);
-        const clean = enriched.replace(/\`\`\`json|\`\`\`/g, "").trim();
+    for (let b = 0; b < articles.length; b += BATCH) {
+      const slice = articles.slice(b, b + BATCH);
+      const lineList = slice.map((a, i) =>
+        (b+i+1) + `. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}"`
+      ).join("\n");
+      const prompt = `Analyze these ${slice.length} news headlines. Return ONLY a JSON array with ${slice.length} objects. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"primary city or country","breaking":false,"locations":["up to 3 city or country names — empty array if domestic only"]}. Base lean on source bias.\n\n${lineList}`;
+
+      try {
+        const raw = await callClaude(prompt);
+        const clean = raw.replace(/\`\`\`json|\`\`\`/g,"").trim();
         const match = clean.match(/\[[\s\S]*\]/);
         if (match) {
           const tags = JSON.parse(match[0]);
-          if (tags.length > 0) {
-            // Build enriched articles with lean/category/region from Claude
-            const enrichedArticles = initial.map((a, i) => ({
-              ...a,
-              lean: tags[i]?.lean || "center",
-              category: tags[i]?.category || "Breaking",
-              region: tags[i]?.region || "National",
-              breaking: tags[i]?.breaking || false,
-              locations: tags[i]?.locations || [],
-            }));
-
-            // Use original RSS/GNews images directly
-            setAiArticles(enrichedArticles);
-          } else {
-            setAiArticles(initial);
-          }
-        } else {
-          setAiArticles(initial);
+          tags.forEach((tag, i) => {
+            if (enriched[b+i]) enriched[b+i] = { ...enriched[b+i],
+              lean: tag?.lean || "center",
+              category: tag?.category || "Breaking",
+              region: tag?.region || "National",
+              breaking: tag?.breaking || false,
+              locations: tag?.locations || [],
+            };
+          });
+          setAiArticles([...enriched]); // progressive update after each batch
         }
+      } catch(e) {
+        console.warn("Enrichment batch", b, "failed — articles showing with defaults:", e);
+        // Feed already visible — this batch just keeps default lean/category
       }
-    } catch (e) {
-      console.error("loadAI failed:", e);
     }
+
+    // ── CACHE FINAL RESULT ──
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), articles: enriched }));
+    } catch(e) {}
+
     setLastUpdated(new Date());
-    setAiLoading(false);
   };
 
   useEffect(()=>{ loadAI(); },[]);
@@ -1761,7 +1834,7 @@ export default function ClarionFinal() {
                 background:C.surface, border:`1px solid ${C.border}`,
                 cursor:"pointer", flexShrink:0, fontSize:16,
               }}>{darkMode ? "☀️" : "🌙"}</button>
-              <button onClick={loadAI} disabled={aiLoading} style={{
+              <button onClick={()=>loadAI(true)} disabled={aiLoading} style={{
               background: "#E8956D",
               border:"none", borderRadius:980,
               padding:"8px 18px", fontSize:12, fontWeight:600,
@@ -2209,6 +2282,74 @@ export default function ClarionFinal() {
             })}
           </div>
         )}
+      {tab==="about" && (
+        <div style={{paddingTop:20, paddingBottom:40}}>
+
+          {/* Hero */}
+          <div style={{textAlign:"center", padding:"32px 16px 28px"}}>
+            <div style={{fontFamily:"'Times New Roman',Times,serif", fontSize:48, fontWeight:700, color:C.text, letterSpacing:"-0.07em", lineHeight:1, marginBottom:8}}>
+              Clar<span style={{fontStyle:"italic"}}>i</span>on.
+            </div>
+            <p style={{fontFamily:F.text, fontSize:14, color:C.muted, margin:0, lineHeight:1.6}}>
+              News from every angle. Loud &amp; Clear.
+            </p>
+          </div>
+
+          <div style={{height:1, background:C.border, margin:"0 0 28px"}}/>
+
+          {/* Mission */}
+          <div style={{marginBottom:28}}>
+            <p style={{fontFamily:F.display, fontSize:20, fontWeight:800, color:C.text, margin:"0 0 12px", letterSpacing:"-0.02em"}}>Our Mission</p>
+            <p style={{fontFamily:F.text, fontSize:14, color:C.sub, lineHeight:1.75, margin:0}}>
+              Clarion was built on a simple belief: an informed democracy needs citizens who read <em>across</em> the political spectrum, not just within their comfort zone. We aggregate news from left, center, and right-leaning sources and make the bias visible — not to tell you what to think, but to show you the full picture.
+            </p>
+          </div>
+
+          {/* How it works */}
+          <div style={{marginBottom:28}}>
+            <p style={{fontFamily:F.display, fontSize:20, fontWeight:800, color:C.text, margin:"0 0 16px", letterSpacing:"-0.02em"}}>How It Works</p>
+            {[
+              { icon:"◀ ● ▶", title:"Lean Ratings", body:"Every story is tagged left, center, or right based on the publishing outlet's historical bias. We use source-level classification, not AI opinion." },
+              { icon:"🧬", title:"Story DNA", body:"The DNA tracer follows a story across sources — showing you how the same event is framed differently by different outlets, and flagging spin or missing context." },
+              { icon:"🗺", title:"World News Map", body:"Stories are geo-tagged and plotted on a live map. Dashed lines connect cities mentioned in the same article — revealing the global relationships behind the headlines." },
+              { icon:"⚖", title:"Compare Coverage", body:"Tap Compare on any story to see how a left, center, and right outlet would each frame the same headline — their angle, word choice, and emphasis." },
+              { icon:"📊", title:"Balance Meter", body:"Your Echo Chamber Meter tracks which lean you've been reading. The goal isn't to make you change your views — just to make your media diet conscious." },
+            ].map(({icon,title,body}) => (
+              <div key={title} style={{display:"flex", gap:14, marginBottom:18, alignItems:"flex-start"}}>
+                <div style={{width:38, height:38, borderRadius:10, background:C.accentSoft, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0}}>{icon}</div>
+                <div>
+                  <p style={{fontFamily:F.display, fontSize:14, fontWeight:700, color:C.text, margin:"0 0 3px"}}>{title}</p>
+                  <p style={{fontFamily:F.text, fontSize:13, color:C.muted, margin:0, lineHeight:1.6}}>{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Lean score explainer */}
+          <div style={{background:C.surface, borderRadius:16, padding:"18px 16px", marginBottom:28}}>
+            <p style={{fontFamily:F.display, fontSize:16, fontWeight:700, color:C.text, margin:"0 0 10px"}}>What do the lean scores mean?</p>
+            {[
+              { color:C.left,   label:"◀ Left",   desc:"Outlet leans liberal — e.g. NYT, Guardian, NPR, CNN" },
+              { color:C.center, label:"● Center", desc:"Outlet aims for neutrality — e.g. Reuters, AP, BBC, Bloomberg" },
+              { color:C.right,  label:"▶ Right",  desc:"Outlet leans conservative — e.g. Fox News, WSJ, Breitbart" },
+            ].map(({color,label,desc}) => (
+              <div key={label} style={{display:"flex", alignItems:"center", gap:10, marginBottom:8}}>
+                <span style={{fontFamily:F.text, fontSize:11, fontWeight:700, color:"#fff", background:color, borderRadius:20, padding:"3px 10px", flexShrink:0}}>{label}</span>
+                <span style={{fontFamily:F.text, fontSize:12, color:C.muted}}>{desc}</span>
+              </div>
+            ))}
+            <p style={{fontFamily:F.text, fontSize:12, color:C.muted, margin:"10px 0 0", lineHeight:1.5}}>Lean scores are assigned at the outlet level, not article by article. A left-leaning outlet can publish a centrist story — the score reflects the publication's overall editorial stance.</p>
+          </div>
+
+          {/* Domain / contact */}
+          <div style={{textAlign:"center", padding:"8px 0 16px"}}>
+            <p style={{fontFamily:F.text, fontSize:13, color:C.muted, margin:"0 0 4px"}}>Coming to <strong style={{color:C.text}}>clarion.news</strong></p>
+            <p style={{fontFamily:F.text, fontSize:12, color:C.muted, margin:0}}>Built with curiosity. Powered by Claude AI.</p>
+          </div>
+
+        </div>
+      )}
+
       </div>
 
       {/* ── INSTAGRAM-STYLE BOTTOM NAV ── */}
@@ -2230,6 +2371,7 @@ export default function ClarionFinal() {
             { id:"balance", label:"Balance", svg:<><circle cx="12" cy="12" r="1" fill="currentColor"/><path d="M12 12 L6 7 M12 12 L18 7 M5 17h14M12 4v2" strokeWidth="1.7" strokeLinecap="round"/></> },
             { id:"dna",     label:"DNA",     svg:<><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8" strokeWidth="1.7" strokeLinecap="round"/></> },
             { id:"profile", label:"Profile", svg:<><circle cx="12" cy="8" r="4" strokeWidth="1.7"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" strokeWidth="1.7" strokeLinecap="round"/></> },
+            { id:"about",   label:"About",   svg:<><circle cx="12" cy="12" r="9" strokeWidth="1.7"/><path d="M12 8v4M12 16h.01" strokeWidth="2" strokeLinecap="round"/></> },
           ].map(n => {
             const active = tab === n.id;
             return (
@@ -2279,4 +2421,8 @@ export default function ClarionFinal() {
       </div>
     </div>
   );
+}
+
+export default function App() {
+  return <ErrorBoundary><ClarionFinal /></ErrorBoundary>;
 }
