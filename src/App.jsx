@@ -1281,7 +1281,8 @@ export default function ClarionFinal() {
             // Set articles immediately so feed appears (images fill in after)
             setAiArticles(enrichedArticles.map(a => ({ ...a, image: null })));
 
-            // Fetch HD images from Pixabay for ALL articles — batch 5 at a time
+            // Fetch HD images directly from Pixabay (CORS-enabled, no proxy needed)
+            const PIXABAY_KEY = "54907044-d568d7fb9c66f6de3f087d7c2";
             const withQuery = enrichedArticles.filter(a => a.imgQuery);
             const BATCH = 5;
             for (let bi = 0; bi < withQuery.length; bi += BATCH) {
@@ -1290,14 +1291,14 @@ export default function ClarionFinal() {
                 batch.map(async a => {
                   try {
                     const r = await fetch(
-                      `https://clarion-proxy.vercel.app/api/images?q=${encodeURIComponent(a.imgQuery)}`
+                      `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(a.imgQuery)}&image_type=photo&orientation=horizontal&min_width=1200&per_page=3&safesearch=true`
                     );
                     const d = await r.json();
-                    return { id: a.id, image: d.image || null };
+                    const hit = d.hits?.[0];
+                    return { id: a.id, image: hit?.largeImageURL || hit?.webformatURL || null };
                   } catch { return { id: a.id, image: null }; }
                 })
               );
-              // Patch images in progressively as each batch completes
               setAiArticles(prev => prev.map(a => {
                 const patch = filled.find(f => f.id === a.id);
                 return patch && patch.image ? { ...a, image: patch.image } : a;
