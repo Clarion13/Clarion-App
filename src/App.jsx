@@ -300,57 +300,169 @@ function BiasGauge({ history, allArticles }) {
 const MAPBOX_TOKEN = "pk.eyJ1IjoiY2xhcmlvbjEzIiwiYSI6ImNtbWNxMmxuOTA4dnQycXE1a2h0OWV1ZHUifQ.Vix6Aa28lbFYADZP1uOkFA";
 
 const CITIES = [
+  // US Cities
   {name:"New York",lat:40.7128,lng:-74.0060},
   {name:"Los Angeles",lat:34.0522,lng:-118.2437},
   {name:"Chicago",lat:41.8781,lng:-87.6298},
   {name:"Houston",lat:29.7604,lng:-95.3698},
-  {name:"Phoenix",lat:33.4484,lng:-112.0740},
-  {name:"Philadelphia",lat:39.9526,lng:-75.1652},
-  {name:"San Antonio",lat:29.4241,lng:-98.4936},
-  {name:"San Diego",lat:32.7157,lng:-117.1611},
-  {name:"Dallas",lat:32.7767,lng:-96.7970},
+  {name:"Washington D.C.",lat:38.9072,lng:-77.0369},
   {name:"San Francisco",lat:37.7749,lng:-122.4194},
   {name:"Seattle",lat:47.6062,lng:-122.3321},
-  {name:"Denver",lat:39.7392,lng:-104.9903},
-  {name:"Washington D.C.",lat:38.9072,lng:-77.0369},
-  {name:"Nashville",lat:36.1627,lng:-86.7816},
-  {name:"Atlanta",lat:33.7490,lng:-84.3880},
   {name:"Miami",lat:25.7617,lng:-80.1918},
   {name:"Boston",lat:42.3601,lng:-71.0589},
-  {name:"Austin",lat:30.2672,lng:-97.7431},
+  {name:"Atlanta",lat:33.7490,lng:-84.3880},
+  {name:"Dallas",lat:32.7767,lng:-96.7970},
+  {name:"Denver",lat:39.7392,lng:-104.9903},
   {name:"Las Vegas",lat:36.1699,lng:-115.1398},
+  {name:"Austin",lat:30.2672,lng:-97.7431},
+  {name:"Phoenix",lat:33.4484,lng:-112.0740},
+  {name:"Nashville",lat:36.1627,lng:-86.7816},
   {name:"Portland",lat:45.5051,lng:-122.6750},
   {name:"Minneapolis",lat:44.9778,lng:-93.2650},
   {name:"Detroit",lat:42.3314,lng:-83.0458},
-  {name:"New Orleans",lat:29.9511,lng:-90.0715},
-  {name:"Kansas City",lat:39.0997,lng:-94.5786},
-  {name:"Salt Lake City",lat:40.7608,lng:-111.8910},
-  {name:"Sacramento",lat:38.5816,lng:-121.4944},
-  {name:"Pittsburgh",lat:40.4406,lng:-79.9959},
-  {name:"Charlotte",lat:35.2271,lng:-80.8431},
-  {name:"Indianapolis",lat:39.7684,lng:-86.1581},
-  {name:"Columbus",lat:39.9612,lng:-82.9988},
-  {name:"San Jose",lat:37.3382,lng:-121.8863},
-  {name:"Memphis",lat:35.1495,lng:-90.0490},
-  {name:"Baltimore",lat:39.2904,lng:-76.6122},
-  {name:"Oklahoma City",lat:35.4676,lng:-97.5164},
-  {name:"Albuquerque",lat:35.0844,lng:-106.6504},
-  {name:"Tucson",lat:32.2226,lng:-110.9747},
-  {name:"Milwaukee",lat:43.0389,lng:-87.9065},
-  {name:"Anchorage",lat:61.2181,lng:-149.9003},
-  {name:"Honolulu",lat:21.3069,lng:-157.8583},
-  {name:"Boise",lat:43.6150,lng:-116.2023},
-  {name:"Richmond",lat:37.5407,lng:-77.4360},
+  {name:"Philadelphia",lat:39.9526,lng:-75.1652},
+  {name:"San Diego",lat:32.7157,lng:-117.1611},
   {name:"Tampa",lat:27.9506,lng:-82.4572},
-  {name:"Orlando",lat:28.5383,lng:-81.3792},
-  {name:"Cincinnati",lat:39.1031,lng:-84.5120},
-  {name:"Cleveland",lat:41.4993,lng:-81.6944},
-  {name:"St. Louis",lat:38.6270,lng:-90.1994},
-  {name:"Omaha",lat:41.2565,lng:-95.9345},
-  {name:"Buffalo",lat:42.8864,lng:-78.8784},
+  {name:"Baltimore",lat:39.2904,lng:-76.6122},
+  {name:"Salt Lake City",lat:40.7608,lng:-111.8910},
+  {name:"New Orleans",lat:29.9511,lng:-90.0715},
+  // Europe
+  {name:"London",lat:51.5074,lng:-0.1278},
+  {name:"Paris",lat:48.8566,lng:2.3522},
+  {name:"Berlin",lat:52.5200,lng:13.4050},
+  {name:"Moscow",lat:55.7558,lng:37.6173},
+  {name:"Kyiv",lat:50.4501,lng:30.5234},
+  {name:"Brussels",lat:50.8503,lng:4.3517},
+  {name:"Rome",lat:41.9028,lng:12.4964},
+  {name:"Madrid",lat:40.4168,lng:-3.7038},
+  {name:"Amsterdam",lat:52.3676,lng:4.9041},
+  {name:"Warsaw",lat:52.2297,lng:21.0122},
+  {name:"Stockholm",lat:59.3293,lng:18.0686},
+  {name:"Zurich",lat:47.3769,lng:8.5417},
+  {name:"Athens",lat:37.9838,lng:23.7275},
+  {name:"Vienna",lat:48.2082,lng:16.3738},
+  // Middle East & Africa
+  {name:"Tel Aviv",lat:32.0853,lng:34.7818},
+  {name:"Gaza",lat:31.5017,lng:34.4668},
+  {name:"Beirut",lat:33.8938,lng:35.5018},
+  {name:"Tehran",lat:35.6892,lng:51.3890},
+  {name:"Riyadh",lat:24.7136,lng:46.6753},
+  {name:"Dubai",lat:25.2048,lng:55.2708},
+  {name:"Istanbul",lat:41.0082,lng:28.9784},
+  {name:"Cairo",lat:30.0444,lng:31.2357},
+  {name:"Nairobi",lat:-1.2921,lng:36.8219},
+  {name:"Lagos",lat:6.5244,lng:3.3792},
+  {name:"Johannesburg",lat:-26.2041,lng:28.0473},
+  // Asia Pacific
+  {name:"Beijing",lat:39.9042,lng:116.4074},
+  {name:"Shanghai",lat:31.2304,lng:121.4737},
+  {name:"Hong Kong",lat:22.3193,lng:114.1694},
+  {name:"Tokyo",lat:35.6762,lng:139.6503},
+  {name:"Seoul",lat:37.5665,lng:126.9780},
+  {name:"Taipei",lat:25.0330,lng:121.5654},
+  {name:"Singapore",lat:1.3521,lng:103.8198},
+  {name:"Mumbai",lat:19.0760,lng:72.8777},
+  {name:"New Delhi",lat:28.6139,lng:77.2090},
+  {name:"Islamabad",lat:33.6844,lng:73.0479},
+  {name:"Kabul",lat:34.5553,lng:69.2075},
+  {name:"Sydney",lat:-33.8688,lng:151.2093},
+  {name:"Canberra",lat:-35.2809,lng:149.1300},
+  // Americas
+  {name:"Ottawa",lat:45.4215,lng:-75.6972},
+  {name:"Toronto",lat:43.6532,lng:-79.3832},
+  {name:"Vancouver",lat:49.2827,lng:-123.1207},
+  {name:"Mexico City",lat:19.4326,lng:-99.1332},
+  {name:"Havana",lat:23.1136,lng:-82.3666},
+  {name:"Caracas",lat:10.4806,lng:-66.9036},
+  {name:"Bogota",lat:4.7110,lng:-74.0721},
+  {name:"Brasilia",lat:-15.8267,lng:-47.9218},
+  {name:"Buenos Aires",lat:-34.6037,lng:-58.3816},
+  {name:"Santiago",lat:-33.4489,lng:-70.6693},
 ];
 
-// Keyword map: city name -> keywords that should map to it
+// Keyword map: location name -> keywords that should map to it
+const CITY_KEYWORDS = {
+  // US
+  "New York":         ["new york","nyc","manhattan","brooklyn","bronx","queens","wall street","times square","new york city"],
+  "Los Angeles":      ["los angeles","l.a.","hollywood","beverly hills","compton","dodgers","lakers"],
+  "Chicago":          ["chicago","windy city","wrigley","cubs","bears","bulls"],
+  "Houston":          ["houston","harris county","nasa","texans","astros"],
+  "Washington D.C.":  ["washington d.c","washington dc","white house","congress","senate","capitol hill","pentagon","state department","supreme court","federal government","federal reserve","oval office","cia","fbi","treasury department","justice department","defense department"],
+  "San Francisco":    ["san francisco","sf bay","silicon valley","palo alto","menlo park","sunnyvale","santa clara","oakland","berkeley","golden gate","big tech","apple inc","google","meta ","openai","anthropic"],
+  "Seattle":          ["seattle","puget sound","seahawks","mariners","amazon hq","microsoft campus"],
+  "Miami":            ["miami","south beach","miami beach","dade county"],
+  "Boston":           ["boston","cambridge ma","harvard","mit ","celtics","patriots","red sox"],
+  "Atlanta":          ["atlanta","atl ","georgia capital","braves","falcons","hartsfield"],
+  "Dallas":           ["dallas","fort worth","dfw","cowboys","rangers","mavericks"],
+  "Denver":           ["denver","mile high","broncos","rockies","nuggets"],
+  "Las Vegas":        ["las vegas","sin city","the strip","raiders","golden knights"],
+  "Austin":           ["austin tx","sxsw","tesla texas","university of texas"],
+  "Phoenix":          ["phoenix","scottsdale","tempe","suns","cardinals az","diamondbacks"],
+  "Nashville":        ["nashville","country music","titans","predators","music city"],
+  "Portland":         ["portland or","trail blazers","pdx"],
+  "Minneapolis":      ["minneapolis","saint paul","twin cities","vikings","timberwolves"],
+  "Detroit":          ["detroit","motor city","motown","lions","tigers","michigan"],
+  "Philadelphia":     ["philadelphia","philly","eagles","phillies","76ers"],
+  "San Diego":        ["san diego","padres"],
+  "Tampa":            ["tampa","st. petersburg","buccaneers","tampa bay"],
+  "Baltimore":        ["baltimore","ravens","orioles"],
+  "Salt Lake City":   ["salt lake city","utah jazz"],
+  "New Orleans":      ["new orleans","nola","saints new orleans","mardi gras"],
+  // Europe
+  "London":           ["london","uk ","united kingdom","england","britain","british","westminster","parliament uk","downing street","buckingham","bank of england","premier league","scotland","wales","northern ireland"],
+  "Paris":            ["paris","france","french","macron","elysee","notre dame","louvre"],
+  "Berlin":           ["berlin","germany","german","bundestag","bundesbank","munich","hamburg","frankfurt","volkswagen","bmw","mercedes"],
+  "Moscow":           ["moscow","russia","russian","kremlin","putin","st petersburg ru","siberia","ukraine war","rosneft"],
+  "Kyiv":             ["kyiv","kiev","ukraine","ukrainian","zelensky","donbas","zaporizhzhia","kharkiv","odessa","mariupol","kherson"],
+  "Brussels":         ["brussels","belgium","european union","eu ","nato","european commission","european parliament"],
+  "Rome":             ["rome","italy","italian","vatican","pope","milan","naples","sicily","mario draghi"],
+  "Madrid":           ["madrid","spain","spanish","barcelona","catalonia","iberia"],
+  "Amsterdam":        ["amsterdam","netherlands","dutch","holland","rotterdam"],
+  "Warsaw":           ["warsaw","poland","polish","krakow"],
+  "Stockholm":        ["stockholm","sweden","swedish","nordic","scandinavia","oslo","norway","denmark","copenhagen","helsinki","finland"],
+  "Zurich":           ["zurich","switzerland","swiss","geneva","davos","imf","world economic forum"],
+  "Athens":           ["athens","greece","greek","acropolis","mediterranean"],
+  "Vienna":           ["vienna","austria","austrian","opec","iaea"],
+  // Middle East & Africa
+  "Tel Aviv":         ["tel aviv","israel","israeli","netanyahu","idf","jerusalem","west bank","haifa","iron dome"],
+  "Gaza":             ["gaza","hamas","palestin","rafah","west bank","idf strike","ceasefire"],
+  "Beirut":           ["beirut","lebanon","lebanese","hezbollah"],
+  "Tehran":           ["tehran","iran","iranian","ayatollah","irgc","nuclear deal","persian"],
+  "Riyadh":           ["riyadh","saudi arabia","saudi","mbs","aramco","opec","crown prince"],
+  "Dubai":            ["dubai","uae","united arab emirates","abu dhabi","emirates airline"],
+  "Istanbul":         ["istanbul","turkey","turkish","ankara","erdogan","bosphorus"],
+  "Cairo":            ["cairo","egypt","egyptian","suez","al-sisi"],
+  "Nairobi":          ["nairobi","kenya","kenyan","east africa"],
+  "Lagos":            ["lagos","nigeria","nigerian","west africa","abuja"],
+  "Johannesburg":     ["johannesburg","south africa","pretoria","cape town","african national congress","anc "],
+  // Asia Pacific
+  "Beijing":          ["beijing","china","chinese","xi jinping","ccp","communist party","pla ","xinjiang","tibet","taiwan strait","south china sea","huawei","alibaba","tencent","byd"],
+  "Shanghai":         ["shanghai","yangtze","pudong"],
+  "Hong Kong":        ["hong kong","hk ","carrie lam","john lee","national security law"],
+  "Tokyo":            ["tokyo","japan","japanese","abe","kishida","nikkei","fujisan","osaka","hiroshima","nagasaki","kyoto"],
+  "Seoul":            ["seoul","south korea","korean","north korea","kim jong","pyongyang","dmz","samsung","hyundai","kpop","bts "],
+  "Taipei":           ["taipei","taiwan","taiwanese","tsai","dpp","kuomintang","strait","chip","tsmc","semiconductor"],
+  "Singapore":        ["singapore","singaporean","asean","straits times"],
+  "Mumbai":           ["mumbai","india","indian","modi","bjp","delhi","bangalore","hyderabad","chennai","kolkata","rupee","tata ","infosys","hindustan"],
+  "New Delhi":        ["new delhi","india ","modi ","parliament india","supreme court india"],
+  "Islamabad":        ["islamabad","pakistan","pakistani","imran khan","lahore","karachi","isi pak"],
+  "Kabul":            ["kabul","afghanistan","afghan","taliban","kandahar"],
+  "Sydney":           ["sydney","australia","australian","melbourne","queensland","aukus","reef","asx"],
+  "Canberra":         ["canberra","australia government","albanese","australian parliament"],
+  // Americas
+  "Ottawa":           ["ottawa","canada","canadian","trudeau","liberal party canada","ontario","alberta","quebec","bank of canada"],
+  "Toronto":          ["toronto","ontario","maple leafs","raptors","blue jays"],
+  "Vancouver":        ["vancouver","british columbia","bc "],
+  "Mexico City":      ["mexico city","mexico","mexican","cdmx","amlo","pemex","cartels","guadalajara","monterrey"],
+  "Havana":           ["havana","cuba","cuban","castro","embargo"],
+  "Caracas":          ["caracas","venezuela","venezuelan","maduro","chavez"],
+  "Bogota":           ["bogota","colombia","colombian","medellin","farc","petro"],
+  "Brasilia":         ["brasilia","brazil","brazilian","lula","bolsonaro","sao paulo","amazon rainforest","rio de janeiro"],
+  "Buenos Aires":     ["buenos aires","argentina","argentine","milei","peronist","peso crisis"],
+  "Santiago":         ["santiago","chile","chilean","boric"],
+};
+
+: city name -> keywords that should map to it
 const CITY_KEYWORDS = {
   "New York":         ["new york","nyc","manhattan","brooklyn","bronx","queens","staten island","wall street","times square","harlem","the bronx","new york city"],
   "Los Angeles":      ["los angeles","la ","l.a.","hollywood","beverly hills","compton","watts","pasadena","long beach","malibu","venice beach","dodgers","lakers","rams","clippers"],
@@ -419,12 +531,30 @@ function fuzzyMatch(region) {
   const r = region.toLowerCase().trim();
   return CITIES.find(c => {
     const n = c.name.toLowerCase();
-    return n === r || r.includes(n) || n.includes(r) ||
-      (r.includes("new york") && c.name === "New York") ||
-      (r.includes("d.c") && c.name === "Washington D.C.") ||
-      (r.includes("washington") && c.name === "Washington D.C.") ||
-      (r.includes("sf") && c.name === "San Francisco") ||
-      (r.includes("silicon valley") && c.name === "San Jose");
+    if (n === r || r.includes(n) || n.includes(r)) return true;
+    // Special cases
+    if (r.includes("d.c") && c.name === "Washington D.C.") return true;
+    if ((r === "washington" || r === "washington, d.c.") && c.name === "Washington D.C.") return true;
+    if ((r === "uk" || r === "united kingdom" || r === "england" || r === "britain") && c.name === "London") return true;
+    if ((r === "france") && c.name === "Paris") return true;
+    if ((r === "germany") && c.name === "Berlin") return true;
+    if ((r === "russia") && c.name === "Moscow") return true;
+    if ((r === "ukraine") && c.name === "Kyiv") return true;
+    if ((r === "china" || r === "prc") && c.name === "Beijing") return true;
+    if ((r === "japan") && c.name === "Tokyo") return true;
+    if ((r === "south korea" || r === "korea") && c.name === "Seoul") return true;
+    if ((r === "taiwan") && c.name === "Taipei") return true;
+    if ((r === "india") && c.name === "New Delhi") return true;
+    if ((r === "australia") && c.name === "Canberra") return true;
+    if ((r === "canada") && c.name === "Ottawa") return true;
+    if ((r === "israel") && c.name === "Tel Aviv") return true;
+    if ((r === "iran") && c.name === "Tehran") return true;
+    if ((r === "saudi arabia") && c.name === "Riyadh") return true;
+    if ((r === "turkey") && c.name === "Istanbul") return true;
+    if ((r === "brazil") && c.name === "Brasilia") return true;
+    if ((r === "pakistan") && c.name === "Islamabad") return true;
+    if ((r === "afghanistan") && c.name === "Kabul") return true;
+    return false;
   });
 }
 
@@ -456,9 +586,9 @@ function HeatMap({ articles, onRegion }) {
       const map = new window.mapboxgl.Map({
         container: mapRef.current,
         style: "mapbox://styles/mapbox/light-v11",
-        center: [-96, 38],
-        zoom: 3.2,
-        minZoom: 2,
+        center: [15, 25],
+        zoom: 1.5,
+        minZoom: 1,
         maxZoom: 10,
       });
       map.on("load", () => { setMapLoaded(true); mapInstance.current = map; });
@@ -482,7 +612,7 @@ function HeatMap({ articles, onRegion }) {
       el.addEventListener("click", () => {
         setSelected(city.name);
         onRegion && onRegion(city.name);
-        map.flyTo({ center: [city.lng, city.lat], zoom: 7, speed: 1.2 });
+        map.flyTo({ center: [city.lng, city.lat], zoom: 6, speed: 1.2 });
       });
       const marker = new window.mapboxgl.Marker({ element: el })
         .setLngLat([city.lng, city.lat])
@@ -496,8 +626,8 @@ function HeatMap({ articles, onRegion }) {
   return (
     <div>
       <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>News Heatmap</h2>
-      <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:"0 0 14px"}}>Tap any city dot to see local stories.</p>
-      <div ref={mapRef} style={{width:"100%",height:320,borderRadius:20,overflow:"hidden",marginBottom:16,boxShadow:"0 4px 20px rgba(0,0,0,0.1)"}}/>
+      <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:"0 0 14px"}}>Stories mapped worldwide. Tap any dot to see local coverage.</p>
+      <div ref={mapRef} style={{width:"100%",height:400,borderRadius:20,overflow:"hidden",marginBottom:16}}/>
       {!mapLoaded && <div style={{display:"flex",gap:10,alignItems:"center",justifyContent:"center",padding:"20px 0"}}><Spinner/><span style={{fontFamily:F.text,fontSize:13,color:C.muted}}>Loading map…</span></div>}
       {selected && selectedArticles.length > 0 && (
         <div style={{marginBottom:16}}>
