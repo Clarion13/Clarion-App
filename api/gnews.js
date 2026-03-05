@@ -4,8 +4,6 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const key = process.env.GNEWS_API_KEY;
-
   // LEFT-leaning RSS feeds
   const LEFT_FEEDS = [
     { url: "https://feeds.npr.org/1001/rss.xml",                        source: "NPR" },
@@ -31,6 +29,37 @@ export default async function handler(req, res) {
     { url: "https://www.breitbart.com/feed/",                          source: "Breitbart" },
   ];
 
+  function extractImage(item) {
+    // Try every common RSS image pattern in order of reliability
+
+    // 1. <media:content url="..."> or <media:thumbnail url="...">
+    const mediaContent = item.match(/<media:content[^>]+url=["']([^"']+)["']/i)?.[1];
+    if (mediaContent && mediaContent.match(/\.(jpg|jpeg|png|webp)/i)) return mediaContent;
+
+    const mediaThumbnail = item.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i)?.[1];
+    if (mediaThumbnail && mediaThumbnail.match(/\.(jpg|jpeg|png|webp)/i)) return mediaThumbnail;
+
+    // 2. <enclosure url="..." type="image/...">
+    const enclosure = item.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image/i)?.[1];
+    if (enclosure) return enclosure;
+
+    // 3. <image><url>...</url></image> inside item
+    const imageTag = item.match(/<image>\s*<url>(https?[^<]+)<\/url>/i)?.[1];
+    if (imageTag) return imageTag;
+
+    // 4. og:image or any https image URL inside description/content
+    const descBlock = item.match(/<description>([\s\S]*?)<\/description>/i)?.[1] ||
+                      item.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/i)?.[1] || "";
+    const imgInDesc = descBlock.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/i)?.[0];
+    if (imgInDesc) return imgInDesc;
+
+    // 5. Any https image URL anywhere in the item
+    const anyImg = item.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/i)?.[0];
+    if (anyImg) return anyImg;
+
+    return null;
+  }
+
   function parseRSS(xml, sourceName) {
     const items = [];
     const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
@@ -43,13 +72,15 @@ export default async function handler(req, res) {
                      item.match(/<description>(.*?)<\/description>/))?.[1]
                     ?.replace(/<[^>]+>/g, "").trim().slice(0, 200);
       const pubDate = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]?.trim();
+      const image = extractImage(item);
+
       if (title && link && !title.includes("<?xml")) {
         items.push({
           title,
           url: link,
           description: desc || "",
           publishedAt: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
-          image: null,
+          image,
           source: { name: sourceName }
         });
       }
