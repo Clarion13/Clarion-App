@@ -1,23 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 
 // ── PASTEL GREEN + CREAM — SOLID PROFESSIONAL ────────────────────
-const C = {
-  bg:       "#FFFFFF",        // white
-  surface:  "#F5F5F5",        // light grey surface
-  card:     "#FFFFFF",        // pure white cards — crisp
-  border:   "#E5E5E5",        // neutral border
-  divider:  "#EDE9E0",        // subtle warm divider
-  text:     "#1A1A18",        // near-black, warm toned
-  sub:      "#4A4A44",        // warm dark grey
-  muted:    "#9A9689",        // warm muted
-  orange:   "#E8956D",        // pastel orange — primary
-  accent:   "#D4784A",        // deeper pastel orange
-  accentSoft:"#FBEEE6",       // very light orange tint
-  left:     "#7BAFC4",        // muted steel blue
-  right:    "#C47B7B",        // muted rose
-  center:   "#E8956D",        // pastel orange
-  breaking: "#C47B7B",        // muted rose-red
+const LIGHT = {
+  bg:"#FFFFFF", surface:"#F5F5F5", card:"#FFFFFF", border:"#E5E5E5",
+  divider:"#EDE9E0", text:"#1A1A18", sub:"#4A4A44", muted:"#9A9689",
+  orange:"#E8956D", accent:"#D4784A", accentSoft:"#FBEEE6",
+  left:"#7BAFC4", right:"#C47B7B", center:"#E8956D", breaking:"#C47B7B",
 };
+const DARK = {
+  bg:"#0F0F0F", surface:"#1A1A1A", card:"#1E1E1E", border:"#2A2A2A",
+  divider:"#252525", text:"#F0EDE8", sub:"#B0ACA6", muted:"#666260",
+  orange:"#E8956D", accent:"#D4784A", accentSoft:"#2A1A12",
+  left:"#7BAFC4", right:"#C47B7B", center:"#E8956D", breaking:"#C47B7B",
+};
+// C is set dynamically — see App component
+let C = LIGHT;
 
 const F = {
   display: "-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif",
@@ -136,7 +133,7 @@ function TrustMeter({ score, size=72 }) {
 // ─────────────────────────────────────────────────────────────────
 // ARTICLE CARD
 // ─────────────────────────────────────────────────────────────────
-function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJournalist, isLead, isGrid }) {
+function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJournalist, isLead, isGrid, onCompare }) {
   const [open, setOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
@@ -221,6 +218,9 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
             <button onClick={()=>setVerifying(a)} style={{
               ...glassBtn(false), padding:"7px 12px", fontSize:12,
             }}>Fact Check</button>
+            {onCompare && <button onClick={e=>{e.stopPropagation();onCompare(a);}} style={{
+              ...glassBtn(false), padding:"7px 12px", fontSize:12,
+            }}>⚖ Compare</button>}
           </div>
           <div style={{ display:"flex", gap:8 }}>
             <input value={comment} onChange={e=>setComment(e.target.value)} placeholder="Comment…"
@@ -1076,7 +1076,7 @@ function OnboardingScreen({ onDone }) {
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:9999,
-      background: C.bg,
+      background: darkMode ? DARK.bg : LIGHT.bg,
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
       padding:"40px 32px",
     }}>
@@ -1184,6 +1184,131 @@ function BalanceHistoryChart({ snapshots }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────
+// COMPARE COVERAGE — side by side left/center/right on one story
+// ─────────────────────────────────────────────────────────────────
+function CompareView({ story, allArticles, onClose }) {
+  const [loading, setLoading] = useState(false);
+  const [comparison, setComparison] = useState(null);
+
+  useEffect(() => {
+    const run = async () => {
+      setLoading(true);
+      try {
+        const result = await callClaude(
+          `A news story: "${story.headline}" (Source: ${story.source}).
+Find or imagine how a left-leaning, center, and right-leaning outlet would cover this SAME story differently.
+Return ONLY valid JSON:
+{
+  "topic": "short topic label",
+  "left":   { "source": "outlet name", "headline": "how left outlet headlines it", "angle": "1 sentence on their framing", "quote": "key phrase they'd use" },
+  "center": { "source": "outlet name", "headline": "neutral headline", "angle": "1 sentence on their framing", "quote": "key phrase" },
+  "right":  { "source": "outlet name", "headline": "how right outlet headlines it", "angle": "1 sentence on their framing", "quote": "key phrase they'd use" }
+}`
+        );
+        const clean = result.replace(/\`\`\`json|\`\`\`/g,"").trim();
+        const match = clean.match(/\{[\s\S]*\}/);
+        if (match) setComparison(JSON.parse(match[0]));
+      } catch(e) {}
+      setLoading(false);
+    };
+    run();
+  }, [story.headline]);
+
+  const cols = comparison ? [
+    { key:"left",   label:"Left",   color:C.left,   data:comparison.left },
+    { key:"center", label:"Center", color:C.center, data:comparison.center },
+    { key:"right",  label:"Right",  color:C.right,  data:comparison.right },
+  ] : [];
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:500,
+      background: C.bg, overflowY:"auto",
+      display:"flex", flexDirection:"column",
+    }}>
+      {/* Header */}
+      <div style={{
+        position:"sticky", top:0, zIndex:10,
+        background: C.bg, borderBottom:`1px solid ${C.border}`,
+        padding:"16px 20px", display:"flex", alignItems:"center", gap:12,
+      }}>
+        <button onClick={onClose} style={{
+          background:C.surface, border:`1px solid ${C.border}`,
+          borderRadius:99, width:32, height:32,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          cursor:"pointer", fontSize:16, color:C.muted, flexShrink:0,
+        }}>←</button>
+        <div>
+          <p style={{fontFamily:F.text, fontSize:11, fontWeight:600, color:C.muted, margin:0, textTransform:"uppercase", letterSpacing:"0.06em"}}>Compare Coverage</p>
+          <p style={{fontFamily:F.display, fontSize:14, fontWeight:700, color:C.text, margin:0, lineHeight:1.3}}>{story.headline.slice(0,60)}…</p>
+        </div>
+      </div>
+
+      <div style={{padding:"20px 16px", maxWidth:640, margin:"0 auto", width:"100%"}}>
+        {loading && (
+          <div style={{display:"flex", flexDirection:"column", alignItems:"center", padding:"60px 0", gap:16}}>
+            <Spinner/>
+            <p style={{fontFamily:F.text, fontSize:14, color:C.muted, margin:0}}>Analysing how each side covers this…</p>
+          </div>
+        )}
+
+        {comparison && !loading && (
+          <>
+            <p style={{fontFamily:F.text, fontSize:13, color:C.muted, margin:"0 0 20px", textAlign:"center"}}>
+              How <strong style={{color:C.text}}>{comparison.topic}</strong> is framed across the spectrum
+            </p>
+
+            {/* Three columns stacked on mobile */}
+            <div style={{display:"flex", flexDirection:"column", gap:12}}>
+              {cols.map(col => (
+                <div key={col.key} style={{
+                  background: C.card, borderRadius:16,
+                  border:`1px solid ${C.border}`,
+                  borderLeft:`4px solid ${col.color}`,
+                  padding:"16px",
+                }}>
+                  <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:10}}>
+                    <span style={{
+                      fontSize:10, fontWeight:700, fontFamily:F.text,
+                      color:col.color, background:col.color+"18",
+                      borderRadius:20, padding:"3px 10px",
+                      textTransform:"uppercase", letterSpacing:"0.05em",
+                    }}>{col.label}</span>
+                    <span style={{fontFamily:F.text, fontSize:12, color:C.muted}}>{col.data?.source}</span>
+                  </div>
+                  <p style={{
+                    fontFamily:F.display, fontSize:15, fontWeight:700,
+                    color:C.text, margin:"0 0 8px", lineHeight:1.35,
+                  }}>{col.data?.headline}</p>
+                  <p style={{fontFamily:F.text, fontSize:13, color:C.sub, margin:"0 0 10px", lineHeight:1.6}}>
+                    {col.data?.angle}
+                  </p>
+                  {col.data?.quote && (
+                    <p style={{
+                      fontFamily:F.text, fontSize:12, color:col.color,
+                      margin:0, fontStyle:"italic",
+                      paddingLeft:10, borderLeft:`2px solid ${col.color}40`,
+                    }}>"{col.data.quote}"</p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Key differences summary */}
+            <div style={{marginTop:20, background:C.surface, borderRadius:14, padding:"16px"}}>
+              <p style={{fontFamily:F.text, fontSize:11, fontWeight:600, color:C.muted, margin:"0 0 8px", textTransform:"uppercase", letterSpacing:"0.06em"}}>What this shows</p>
+              <p style={{fontFamily:F.text, fontSize:13, color:C.sub, margin:0, lineHeight:1.6}}>
+                The same story can be framed very differently depending on the outlet's perspective. Clarion shows you all three so you can form your own view.
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ClarionFinal() {
   const [tab,setTab]=useState("feed");
   const [category,setCategory]=useState("All");
@@ -1204,6 +1329,14 @@ export default function ClarionFinal() {
   const [followedTopics, setFollowedTopics] = useState(["Politics","Tech","World"]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [balanceSnapshots, setBalanceSnapshots] = useState([]);
+  const [darkMode, setDarkMode] = useState(false);
+  const [breakingDismissed, setBreakingDismissed] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [compareStory, setCompareStory] = useState(null);
+
+  // Wire C to darkMode — all components read C from closure
+  C = darkMode ? DARK : LIGHT;
 
   const all=[...aiArticles,...ARTICLES];
 
@@ -1309,6 +1442,34 @@ export default function ClarionFinal() {
     return ()=>clearInterval(t);
   },[]);
 
+  // Live search — fetches from NewsData.io by query
+  const NEWSDATA_KEY = "pub_9bd9b65fe1654838ae735506c126e32e";
+  const doSearch = async (query) => {
+    if (!query.trim()) { setSearchResults(null); return; }
+    setSearchLoading(true);
+    try {
+      const q = encodeURIComponent(query.trim().split(" ").slice(0,5).join(" "));
+      const res = await fetch(`https://newsdata.io/api/1/news?apikey=${NEWSDATA_KEY}&q=${q}&language=en&size=10`);
+      const json = await res.json();
+      const results = (json.results || []).filter(a => a.title && a.link).map((a, i) => ({
+        id: 900 + i,
+        headline: a.title,
+        summary: a.description || "",
+        source: a.source_id || "Unknown",
+        url: a.link,
+        image: a.image_url || null,
+        publishedAt: a.pubDate || null,
+        lean: "center", category: "Breaking", time: "Live",
+        breaking: false, region: "National", verified: true,
+      }));
+      setSearchResults(results);
+    } catch(e) { setSearchResults([]); }
+    setSearchLoading(false);
+  };
+
+  // Detect breaking stories — any article flagged breaking that hasn't been dismissed
+  const breakingStory = !breakingDismissed && all.find(a => a.breaking);
+
   const loadBriefing=async()=>{
     setBriefingLoading(true);
     try{
@@ -1332,6 +1493,7 @@ export default function ClarionFinal() {
       `}</style>
 
       {showOnboarding && <OnboardingScreen onDone={()=>setShowOnboarding(false)}/>}
+      {compareStory && <CompareView story={compareStory} allArticles={all} onClose={()=>setCompareStory(null)}/>}
 
       {verifying  && <FactSheet article={verifying} onClose={()=>setVerifying(null)}/>}
       {showWrite  && <PublishSheet onClose={()=>setShowWrite(false)}/>}
@@ -1371,6 +1533,12 @@ export default function ClarionFinal() {
                   <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
                 </svg>
               </button>
+              <button onClick={()=>setDarkMode(v=>!v)} style={{
+                width:36, height:36, borderRadius:980,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                background:C.surface, border:`1px solid ${C.border}`,
+                cursor:"pointer", flexShrink:0, fontSize:16,
+              }}>{darkMode ? "☀️" : "🌙"}</button>
               <button onClick={loadAI} disabled={aiLoading} style={{
               background: "#E8956D",
               border:"none", borderRadius:980,
@@ -1416,8 +1584,8 @@ export default function ClarionFinal() {
                 value={searchInput}
                 onChange={e=>setSearchInput(e.target.value)}
                 onKeyDown={e=>{
-                  if(e.key==="Enter"){ setSearch(searchInput); setShowSearch(false); }
-                  if(e.key==="Escape"){ setSearch(""); setSearchInput(""); setShowSearch(false); }
+                  if(e.key==="Enter"){ doSearch(searchInput); setShowSearch(false); setTab("feed"); }
+                  if(e.key==="Escape"){ setSearch(""); setSearchInput(""); setSearchResults(null); setShowSearch(false); }
                 }}
                 placeholder="Search stories, topics, sources…"
                 style={{
@@ -1489,13 +1657,42 @@ export default function ClarionFinal() {
               </div>
             </div>
 
-            {feed.length===0 && (
+            {/* Breaking news banner */}
+            {breakingStory && (
+              <div style={{
+                background:C.breaking, borderRadius:12, padding:"10px 14px",
+                display:"flex", alignItems:"center", gap:10, marginBottom:12,
+                animation:"tab-pop 0.3s ease",
+              }}>
+                <span style={{fontSize:10,fontWeight:800,color:"#fff",background:"rgba(255,255,255,0.25)",borderRadius:4,padding:"2px 6px",flexShrink:0,letterSpacing:"0.05em"}}>BREAKING</span>
+                <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:"#fff",margin:0,flex:1,lineHeight:1.3}}>{breakingStory.headline.slice(0,80)}{breakingStory.headline.length>80?"…":""}</p>
+                <button onClick={()=>setBreakingDismissed(true)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.7)",cursor:"pointer",fontSize:16,flexShrink:0,lineHeight:1}}>✕</button>
+              </div>
+            )}
+
+            {/* Search results view */}
+            {searchResults !== null && (
+              <div style={{marginBottom:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:0}}>{searchResults.length} results</p>
+                  <button onClick={()=>setSearchResults(null)} style={{fontSize:11,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:99,padding:"3px 10px",cursor:"pointer",fontFamily:F.text}}>Clear ✕</button>
+                </div>
+                {searchLoading && <div style={{display:"flex",gap:10,alignItems:"center",padding:"20px 0"}}><Spinner/><p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:0}}>Searching…</p></div>}
+                {searchResults.map(a=>(
+                  <div key={a.id} style={{marginBottom:10}}>
+                    <ArticleCard a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={false} isGrid={false} onCompare={setCompareStory}/>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {searchResults === null && feed.length===0 && (
               <div style={{display:"flex", gap:12, alignItems:"center", justifyContent:"center", padding:"60px 0"}}>
                 <Spinner/>
                 <p style={{fontFamily:F.text, fontSize:14, color:C.muted, margin:0}}>Loading live stories…</p>
               </div>
             )}
-            {feed.length > 0 && (() => {
+            {searchResults === null && feed.length > 0 && (() => {
               const [lead, ...rest] = feed;
               const pairs = [];
               for (let i = 0; i < rest.length; i += 2) pairs.push(rest.slice(i, i+2));
@@ -1503,13 +1700,13 @@ export default function ClarionFinal() {
                 <>
                   {/* Lead story — full width */}
                   <div style={{ marginBottom:10 }}>
-                    <ArticleCard a={lead} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={true} isGrid={false}/>
+                    <ArticleCard a={lead} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={true} isGrid={false} onCompare={setCompareStory}/>
                   </div>
                   {/* 2-column grid for the rest */}
                   {pairs.map((pair, pi) => (
                     <div key={pi} style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
                       {pair.map(a => (
-                        <ArticleCard key={a.id} a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={false} isGrid={true}/>
+                        <ArticleCard key={a.id} a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={false} isGrid={true} onCompare={setCompareStory}/>
                       ))}
                     </div>
                   ))}
@@ -1624,7 +1821,7 @@ export default function ClarionFinal() {
             {bookmarks.length===0
               ? <p style={{fontFamily:F.text,fontSize:14,color:C.muted}}>Tap "Save" on any story to find it here.</p>
               : all.filter(a=>bookmarks.includes(a.id)).map((a,i)=>(
-                  <ArticleCard key={a.id} a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={i===0} isGrid={false}/>
+                  <ArticleCard key={a.id} a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={i===0} isGrid={false} onCompare={setCompareStory}/>
                 ))
             }
 
