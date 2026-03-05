@@ -1278,24 +1278,26 @@ export default function ClarionFinal() {
               imgQuery: tags[i]?.imgQuery || null,
             }));
 
-            // Set articles immediately so feed appears
-            setAiArticles(enrichedArticles);
+            // Set articles immediately so feed appears (images fill in after)
+            setAiArticles(enrichedArticles.map(a => ({ ...a, image: null })));
 
-            // Now fill missing images from Unsplash in batches (no API key needed)
-            // Use a stable seed per headline so same article always gets same photo
-            const needsImage = enrichedArticles.filter(a => !a.image && a.imgQuery);
-            if (needsImage.length > 0) {
+            // Fetch HD images from Pixabay for ALL articles — batch 5 at a time
+            const withQuery = enrichedArticles.filter(a => a.imgQuery);
+            const BATCH = 5;
+            for (let bi = 0; bi < withQuery.length; bi += BATCH) {
+              const batch = withQuery.slice(bi, bi + BATCH);
               const filled = await Promise.all(
-                needsImage.map(async a => {
+                batch.map(async a => {
                   try {
-                    const seed = encodeURIComponent(a.imgQuery);
-                    // Unsplash source — 1200x800 landscape, seeded by query for consistency
-                    const imgUrl = `https://source.unsplash.com/1200x800/?${seed}`;
-                    return { id: a.id, image: imgUrl };
+                    const r = await fetch(
+                      `https://clarion-proxy.vercel.app/api/images?q=${encodeURIComponent(a.imgQuery)}`
+                    );
+                    const d = await r.json();
+                    return { id: a.id, image: d.image || null };
                   } catch { return { id: a.id, image: null }; }
                 })
               );
-              // Patch images into articles
+              // Patch images in progressively as each batch completes
               setAiArticles(prev => prev.map(a => {
                 const patch = filled.find(f => f.id === a.id);
                 return patch && patch.image ? { ...a, image: patch.image } : a;
