@@ -1480,6 +1480,33 @@ Return ONLY valid JSON:
   );
 }
 
+// Scroll-tracking dots for the carousel
+function CarouselDots({ items, carouselId }) {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    const el = document.getElementById(carouselId);
+    if (!el) return;
+    const onScroll = () => {
+      const idx = Math.round(el.scrollLeft / (el.scrollWidth / items.length));
+      setActive(Math.min(idx, items.length - 1));
+    };
+    el.addEventListener("scroll", onScroll, { passive:true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [carouselId, items.length]);
+  return (
+    <div style={{ display:"flex", justifyContent:"center", gap:5, paddingTop:2 }}>
+      {items.map((_, i) => (
+        <div key={i} style={{
+          width: i === active ? 18 : 6,
+          height:6, borderRadius:3,
+          background: i === active ? C.orange : C.border,
+          transition:"all 0.3s",
+        }}/>
+      ))}
+    </div>
+  );
+}
+
 export default function ClarionFinal() {
   const [tab,setTab]=useState("feed");
   const [category,setCategory]=useState("All");
@@ -1840,24 +1867,182 @@ export default function ClarionFinal() {
                 <p style={{fontFamily:F.text, fontSize:14, color:C.muted, margin:0}}>Loading live stories…</p>
               </div>
             )}
+
             {searchResults === null && feed.length > 0 && (() => {
-              const [lead, ...rest] = feed;
-              const pairs = [];
-              for (let i = 0; i < rest.length; i += 2) pairs.push(rest.slice(i, i+2));
+              const withImg = feed.filter(a => a.image);
+              const noImg   = feed.filter(a => !a.image);
+              // Carousel: top 6 image stories
+              const carousel = withImg.slice(0, 6);
+              // Section rows by category (image stories only, skip carousel ones)
+              const afterCarousel = withImg.slice(6);
+              const sectionCats = ["Politics","World","Tech","Business","Science","Health","Uplifting","Breaking"];
+              const sections = sectionCats.map(cat => ({
+                cat,
+                articles: afterCarousel.filter(a => a.category === cat),
+              })).filter(s => s.articles.length >= 2);
+
               return (
                 <>
-                  {/* Lead story — full width */}
-                  <div style={{ marginBottom:10 }}>
-                    <ArticleCard a={lead} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={true} isGrid={false} onCompare={setCompareStory}/>
-                  </div>
-                  {/* 2-column grid for the rest */}
-                  {pairs.map((pair, pi) => (
-                    <div key={pi} style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
-                      {pair.map(a => (
-                        <ArticleCard key={a.id} a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={false} isGrid={true} onCompare={setCompareStory}/>
-                      ))}
+                  {/* ── HERO CAROUSEL ── */}
+                  {carousel.length > 0 && (
+                    <div style={{ margin:"4px -16px 20px", position:"relative" }}>
+                      <div id="clarion-carousel" style={{
+                        display:"flex", overflowX:"auto", gap:12,
+                        padding:"0 16px 12px", scrollbarWidth:"none",
+                        scrollSnapType:"x mandatory",
+                        WebkitOverflowScrolling:"touch",
+                      }}>
+                        {carousel.map((a, i) => {
+                          const lc = leanColor(a.lean);
+                          return (
+                            <div key={a.id}
+                              onClick={()=>{ onRead(a.id); window.open(a.url,"_blank","noopener,noreferrer"); }}
+                              style={{
+                                flexShrink:0,
+                                width: "calc(85vw)",
+                                maxWidth:480,
+                                borderRadius:18,
+                                overflow:"hidden",
+                                position:"relative",
+                                cursor:"pointer",
+                                scrollSnapAlign:"start",
+                                background:C.surface,
+                                border:`1px solid ${C.border}`,
+                              }}>
+                              {/* Image */}
+                              <div style={{ height:220, overflow:"hidden", position:"relative" }}>
+                                <img src={a.image} alt=""
+                                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
+                                  onError={e=>{ e.target.parentElement.style.background = lc+"18"; e.target.style.display="none"; }}
+                                />
+                                {/* Gradient overlay */}
+                                <div style={{
+                                  position:"absolute", inset:0,
+                                  background:"linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.1) 55%, transparent 100%)",
+                                }}/>
+                                {/* Source + lean badge over image */}
+                                <div style={{ position:"absolute", top:12, left:12, display:"flex", gap:6, alignItems:"center" }}>
+                                  <span style={{ fontFamily:F.text, fontSize:10, fontWeight:700, color:"#fff",
+                                    background:"rgba(0,0,0,0.45)", backdropFilter:"blur(8px)",
+                                    borderRadius:20, padding:"3px 9px" }}>{a.source}</span>
+                                  <span style={{ fontFamily:F.text, fontSize:10, fontWeight:700,
+                                    color:"#fff", background:lc,
+                                    borderRadius:20, padding:"3px 9px" }}>
+                                    {a.lean==="left"?"◀ L":a.lean==="right"?"▶ R":"● C"}
+                                  </span>
+                                </div>
+                                {/* Headline over image */}
+                                <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"14px 14px 16px" }}>
+                                  <p style={{
+                                    fontFamily:F.display, fontSize:17, fontWeight:700,
+                                    color:"#fff", margin:0, lineHeight:1.3,
+                                    display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden",
+                                    textShadow:"0 1px 4px rgba(0,0,0,0.4)",
+                                  }}>{decodeHTML(a.headline)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Scroll dots */}
+                      <CarouselDots items={carousel} carouselId="clarion-carousel"/>
+                    </div>
+                  )}
+
+                  {/* ── CATEGORY SECTIONS ── */}
+                  {sections.map(({ cat, articles }) => (
+                    <div key={cat} style={{ marginBottom:24 }}>
+                      {/* Section header */}
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                        <p style={{
+                          fontFamily:F.display, fontSize:18, fontWeight:800,
+                          color:C.text, margin:0, letterSpacing:"-0.02em",
+                        }}>{cat}</p>
+                        <button onClick={()=>setCategory(cat)} style={{
+                          fontFamily:F.text, fontSize:12, color:C.accent,
+                          background:"none", border:"none", cursor:"pointer", fontWeight:600,
+                        }}>See all →</button>
+                      </div>
+                      {/* Lead + side stack */}
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                        {articles.slice(0,4).map((a, i) => {
+                          const lc = leanColor(a.lean);
+                          const isFirst = i === 0;
+                          return (
+                            <div key={a.id}
+                              style={{
+                                gridColumn: isFirst ? "1 / -1" : "auto",
+                                borderRadius:14,
+                                overflow:"hidden",
+                                background:C.card,
+                                border:`1px solid ${C.border}`,
+                                cursor:"pointer",
+                                borderLeft: isFirst ? "none" : `3px solid ${lc}`,
+                              }}
+                              onClick={()=>{ onRead(a.id); window.open(a.url,"_blank","noopener,noreferrer"); }}
+                            >
+                              {isFirst && (
+                                <div style={{ height:160, overflow:"hidden" }}>
+                                  <img src={a.image} alt=""
+                                    style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
+                                    onError={e=>{ e.target.style.display="none"; }}/>
+                                </div>
+                              )}
+                              <div style={{ padding: isFirst ? "12px 14px" : "10px 12px" }}>
+                                <p style={{ fontFamily:F.text, fontSize:10, color:C.accent, fontWeight:600, margin:"0 0 4px" }}>{a.source}</p>
+                                <p style={{
+                                  fontFamily:F.display,
+                                  fontSize: isFirst ? 15 : 13,
+                                  fontWeight: 700,
+                                  color:C.text, margin:0, lineHeight:1.35,
+                                  display:"-webkit-box", WebkitLineClamp: isFirst ? 2 : 3, WebkitBoxOrient:"vertical", overflow:"hidden",
+                                }}>{decodeHTML(a.headline)}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
+
+                  {/* ── TEXT BRIEFS (no image) ── */}
+                  {noImg.length > 0 && (
+                    <div style={{ marginBottom:24 }}>
+                      <p style={{ fontFamily:F.display, fontSize:18, fontWeight:800, color:C.text, margin:"0 0 10px", letterSpacing:"-0.02em" }}>More Stories</p>
+                      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:16, overflow:"hidden" }}>
+                        {noImg.map((a, i) => {
+                          const lc = leanColor(a.lean);
+                          return (
+                            <div key={a.id}
+                              onClick={()=>{ onRead(a.id); window.open(a.url,"_blank","noopener,noreferrer"); }}
+                              style={{
+                                display:"flex", alignItems:"center", gap:12, padding:"13px 14px",
+                                borderBottom: i < noImg.length-1 ? `1px solid ${C.border}` : "none",
+                                cursor:"pointer",
+                              }}>
+                              <div style={{ width:3, alignSelf:"stretch", borderRadius:2, background:lc, flexShrink:0 }}/>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <p style={{ fontFamily:F.text, fontSize:13, fontWeight:600, color:C.text,
+                                  margin:"0 0 3px", lineHeight:1.35,
+                                  display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+                                  {decodeHTML(a.headline)}
+                                </p>
+                                <div style={{ display:"flex", gap:5, alignItems:"center" }}>
+                                  <span style={{ fontFamily:F.text, fontSize:10, color:C.muted }}>{a.source}</span>
+                                  <span style={{ color:C.muted, fontSize:10 }}>·</span>
+                                  <span style={{ fontFamily:F.text, fontSize:10, color:lc, fontWeight:600 }}>
+                                    {a.lean==="left"?"Left":a.lean==="right"?"Right":"Center"}
+                                  </span>
+                                </div>
+                              </div>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </>
               );
             })()}
