@@ -516,7 +516,6 @@ const fuzzyMatch = fuzzyMatchDirect;
 function HeatMap({ articles, onRegion }) {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
-  const markersRef = useRef([]);
   const [selected, setSelected] = useState(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [hoveredLine, setHoveredLine] = useState(null);
@@ -573,103 +572,129 @@ function HeatMap({ articles, onRegion }) {
     return () => { if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; } };
   }, []);
 
+  // Store connections in a ref so click handlers can access current data
+  const connectionsRef = useRef([]);
+  connectionsRef.current = connections;
+
   // Draw connections + markers whenever articles or map changes
   useEffect(() => {
     if (!mapLoaded || !mapInstance.current) return;
     const map = mapInstance.current;
 
-    // Remove old markers
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
+    // Remove ALL old layers and sources cleanly
+    [
+      "clarion-labels","clarion-dots-outer","clarion-dots",
+      "clarion-lines","clarion-lines-bg"
+    ].forEach(id => { try { if (map.getLayer(id)) map.removeLayer(id); } catch(e){} });
+    [
+      "clarion-cities","clarion-connections"
+    ].forEach(id => { try { if (map.getSource(id)) map.removeSource(id); } catch(e){} });
 
-    // --- Draw dashed connection lines via GeoJSON ---
-    // Remove old layers/sources if they exist
-    ["clarion-lines", "clarion-lines-bg"].forEach(id => {
-      if (map.getLayer(id)) map.removeLayer(id);
-    });
-    if (map.getSource("clarion-connections")) map.removeSource("clarion-connections");
-
+    // ── CONNECTION LINES (GeoJSON layer — canvas-anchored, never drifts) ──
     const lineFeatures = connections.map((conn, idx) => ({
       type: "Feature",
-      properties: { color: conn.color, idx },
+      properties: { color: conn.color, idx,
+        fromName: conn.from.name, toName: conn.to.name },
       geometry: {
         type: "LineString",
-        coordinates: [
-          [conn.from.lng, conn.from.lat],
-          [conn.to.lng, conn.to.lat],
-        ],
+        coordinates: [[conn.from.lng, conn.from.lat], [conn.to.lng, conn.to.lat]],
       },
     }));
 
-    if (lineFeatures.length > 0) {
-      map.addSource("clarion-connections", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: lineFeatures },
-      });
-      // Subtle glow background line
-      map.addLayer({
-        id: "clarion-lines-bg",
-        type: "line",
-        source: "clarion-connections",
-        paint: {
-          "line-color": ["get", "color"],
-          "line-width": 3,
-          "line-opacity": 0.08,
-          "line-blur": 4,
-        },
-      });
-      // Dashed foreground line
-      map.addLayer({
-        id: "clarion-lines",
-        type: "line",
-        source: "clarion-connections",
-        paint: {
-          "line-color": ["get", "color"],
-          "line-width": 1.5,
-          "line-opacity": 0.55,
-          "line-dasharray": [3, 3],
-        },
-      });
-      // Click on line to show article
-      map.on("click", "clarion-lines", (e) => {
-        const idx = e.features[0]?.properties?.idx;
-        if (idx !== undefined && connections[idx]) {
-          setSelected({ type:"line", conn: connections[idx] });
-        }
-      });
-      map.on("mouseenter", "clarion-lines", () => { map.getCanvas().style.cursor = "pointer"; });
-      map.on("mouseleave", "clarion-lines", () => { map.getCanvas().style.cursor = ""; });
-    }
-
-    // --- Draw city dot markers ---
-    CITIES.forEach(city => {
-      const count = cityCount[city.name] || 0;
-      if (count === 0) return;
-      const size = Math.min(16 + count * 5, 44);
-      const el = document.createElement("div");
-      el.style.cssText = `
-        width:${size}px;height:${size}px;
-        background:#E8956D;
-        border:2px solid rgba(255,255,255,0.9);
-        border-radius:50%;cursor:pointer;
-        display:flex;align-items:center;justify-content:center;
-        font-size:${size > 26 ? 11 : 9}px;font-weight:700;color:#fff;
-        box-shadow:0 0 0 3px rgba(232,149,109,0.25);
-        transition:transform 0.15s;
-      `;
-      el.innerHTML = count;
-      // Use mousedown so selection fires before Mapbox moves the map
-      el.addEventListener("mousedown", (e) => {
-        e.stopPropagation();
-        setSelected({ type:"city", name: city.name });
-        onRegion && onRegion(city.name);
-        // Delay flyTo so click registers first
-        setTimeout(() => map.flyTo({ center: [city.lng, city.lat], zoom: 5, speed: 1.2 }), 80);
-      });
-      const marker = new window.mapboxgl.Marker({ element: el })
-        .setLngLat([city.lng, city.lat]).addTo(map);
-      markersRef.current.push(marker);
+    map.addSource("clarion-connections", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: lineFeatures },
     });
+    map.addLayer({
+      id: "clarion-lines-bg", type: "line", source: "clarion-connections",
+      paint: { "line-color": ["get","color"], "line-width": 4, "line-opacity": 0.07, "line-blur": 6 },
+    });
+    map.addLayer({
+      id: "clarion-lines", type: "line", source: "clarion-connections",
+      paint: { "line-color": ["get","color"], "line-width": 1.4, "line-opacity": 0.5, "line-dasharray": [3,3] },
+    });
+
+    // ── CITY DOTS (circle layer — 100% canvas-anchored, zero drift) ──
+    const cityFeatures = CITIES
+      .filter(city => cityCount[city.name] > 0)
+      .map(city => ({
+        type: "Feature",
+        properties: {
+          name: city.name,
+          count: cityCount[city.name],
+          // radius scales with count
+          radius: Math.min(6 + cityCount[city.name] * 3, 22),
+        },
+        geometry: { type: "Point", coordinates: [city.lng, city.lat] },
+      }));
+
+    map.addSource("clarion-cities", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: cityFeatures },
+    });
+
+    // Outer glow ring
+    map.addLayer({
+      id: "clarion-dots-outer", type: "circle", source: "clarion-cities",
+      paint: {
+        "circle-radius": ["interpolate",["linear"],["get","radius"], 6,10, 22,28],
+        "circle-color": "#E8956D",
+        "circle-opacity": 0.18,
+        "circle-stroke-width": 0,
+      },
+    });
+
+    // Main dot
+    map.addLayer({
+      id: "clarion-dots", type: "circle", source: "clarion-cities",
+      paint: {
+        "circle-radius": ["interpolate",["linear"],["get","radius"], 6,6, 22,22],
+        "circle-color": "#E8956D",
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff",
+        "circle-opacity": 0.95,
+      },
+    });
+
+    // Count label
+    map.addLayer({
+      id: "clarion-labels", type: "symbol", source: "clarion-cities",
+      layout: {
+        "text-field": ["to-string", ["get","count"]],
+        "text-size": 10,
+        "text-font": ["DIN Offc Pro Bold","Arial Unicode MS Bold"],
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
+      },
+      paint: { "text-color": "#ffffff", "text-halo-color": "#E8956D", "text-halo-width": 1 },
+    });
+
+    // ── CLICK HANDLERS ──
+    map.on("click", "clarion-dots", (e) => {
+      const name = e.features[0]?.properties?.name;
+      if (name) {
+        setSelected({ type:"city", name });
+        onRegion && onRegion(name);
+        const feat = e.features[0];
+        const coords = feat.geometry.coordinates;
+        map.flyTo({ center: coords, zoom: 5, speed: 1.2 });
+      }
+    });
+    map.on("click", "clarion-lines", (e) => {
+      const idx = e.features[0]?.properties?.idx;
+      if (idx !== undefined && connectionsRef.current[idx]) {
+        setSelected({ type:"line", conn: connectionsRef.current[idx] });
+      }
+    });
+
+    // Cursor changes
+    ["clarion-dots","clarion-dots-outer"].forEach(layer => {
+      map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
+    });
+    map.on("mouseenter", "clarion-lines", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "clarion-lines", () => { map.getCanvas().style.cursor = ""; });
+
   }, [mapLoaded, articles]);
 
   const selectedArticles = selected?.type === "city"
