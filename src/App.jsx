@@ -69,6 +69,21 @@ const JOURNALISTS = {
 
 function leanColor(l){ return l==="left"?C.left:l==="right"?C.right:C.center; }
 
+// Decode HTML entities in article text (e.g. &#8216; -> ' , &amp; -> &)
+function decodeHTML(str) {
+  if (!str) return "";
+  return str
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ").replace(/&ndash;/g, "–").replace(/&mdash;/g, "—")
+    .replace(/&lsquo;/g, "'").replace(/&rsquo;/g, "'")
+    .replace(/&ldquo;/g, "“").replace(/&rdquo;/g, "”")
+    .replace(/&hellip;/g, "…").replace(/&bull;/g, "•")
+    .replace(/<[^>]+>/g, "").trim();
+}
+
 // Format ISO date → "Mar 3, 2026 · 2:14 PM"
 function formatDate(iso) {
   if (!iso) return null;
@@ -191,11 +206,11 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
             fontSize: isLead ? 18 : isGrid ? 13 : 15,
             fontWeight: isLead ? 700 : 600,
             display:"-webkit-box", WebkitLineClamp: isGrid ? 3 : 5, WebkitBoxOrient:"vertical", overflow:"hidden",
-          }}>{a.headline}</p>
+          }}>{decodeHTML(a.headline)}</p>
           {isLead && a.summary && (
             <p style={{ fontFamily:F.text, fontSize:13, color:C.muted, margin:"6px 0 0", lineHeight:1.6,
               display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
-              {a.summary}
+              {decodeHTML(a.summary)}
             </p>
           )}
         </div>
@@ -205,7 +220,7 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
       {open && (
         <div style={{ padding:"0 16px 16px" }}>
           <div style={{ height:1, background:"rgba(0,0,0,0.06)", marginBottom:12 }}/>
-          <p style={{ fontFamily:F.text, fontSize:14, color:C.sub, lineHeight:1.75, margin:"0 0 12px" }}>{a.summary}</p>
+          <p style={{ fontFamily:F.text, fontSize:14, color:C.sub, lineHeight:1.75, margin:"0 0 12px" }}>{decodeHTML(a.summary)}</p>
           {dateStr && <p style={{ fontFamily:F.text, fontSize:11, color:C.muted, margin:"0 0 12px" }}>Published {dateStr}</p>}
           <div style={{ display:"flex", gap:7, flexWrap:"wrap", marginBottom:12 }}>
             {a.url && (
@@ -496,7 +511,7 @@ function HeatMap({ articles, onRegion }) {
                 <div style={{width:3,height:14,background:leanColor(a.lean),borderRadius:2,flexShrink:0}}/>
                 <span style={{fontFamily:F.text,fontSize:11,color:C.muted}}>{a.source}</span>
               </div>
-              <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:0,lineHeight:1.4}}>{a.headline}</p>
+              <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:0,lineHeight:1.4}}>{decodeHTML(a.headline)}</p>
             </div>
           ))}
         </div>
@@ -1487,7 +1502,8 @@ export default function ClarionFinal() {
       <style>{`
         @keyframes clarion-spin { to { transform: rotate(360deg); } }
         @keyframes tab-pop { 0% { transform: scale(0.85); opacity:0.5; } 100% { transform: scale(1); opacity:1; } }
-        * { -webkit-tap-highlight-color: transparent; }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; margin: 0; padding: 0; }
+        html, body, #root { margin: 0; padding: 0; background: ${C.bg}; }
         ::-webkit-scrollbar { display: none; }
       `}</style>
 
@@ -1742,7 +1758,7 @@ export default function ClarionFinal() {
                   <div key={a.id} onClick={()=>{ onRead(a.id); setTab("feed"); }} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:`1px solid ${C.divider}`,cursor:"pointer",alignItems:"flex-start"}}>
                     <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:leanColor(a.lean),flexShrink:0}}/>
                     <div style={{flex:1,minWidth:0}}>
-                      <p style={{fontFamily:F.text,fontSize:14,color:C.text,fontWeight:500,margin:"0 0 3px",lineHeight:1.35}}>{a.headline}</p>
+                      <p style={{fontFamily:F.text,fontSize:14,color:C.text,fontWeight:500,margin:"0 0 3px",lineHeight:1.35}}>{decodeHTML(a.headline)}</p>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
                         <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{a.source}</p>
                         <span style={{fontSize:10,color:leanColor(a.lean),fontWeight:600,background:leanColor(a.lean)+"18",borderRadius:10,padding:"1px 6px",fontFamily:F.text}}>{a.lean}</span>
