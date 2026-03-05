@@ -916,13 +916,11 @@ export default function ClarionFinal() {
   const loadAI = async () => {
     setAiLoading(true);
     try {
-      // Fetch from multiple categories in parallel via proxy
       const res = await fetch("https://clarion-proxy.vercel.app/api/gnews");
       const json = await res.json();
       const articles = (json.articles || []).filter(a => a.title && a.url).slice(0, 40);
 
       if (articles.length > 0) {
-        // Show articles immediately
         const initial = articles.map((a, i) => ({
           id: 200 + i,
           headline: a.title,
@@ -940,33 +938,27 @@ export default function ClarionFinal() {
         }));
         setAiArticles(initial);
 
-        // Enrich with Claude — lean, category, region, breaking
+        // Build prompt for Claude enrichment
         const lineList = articles.map((a, i) =>
-          `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}" | Desc: "${(a.description||"").slice(0,120)}"`
+          `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}"`
         ).join("\n");
 
-        const enriched = await callClaude(
-          `You are a news editor. Analyze these ${articles.length} real headlines and return ONLY a JSON array (same order, no extra text). Each object must have:
-- lean: "left" / "center" / "right" (based on source reputation AND headline framing — e.g. Fox/WSJ/Breitbart lean right, NYT/Guardian/NPR lean left, Reuters/AP/BBC are center)
-- category: one of Politics / Tech / Business / Science / Uplifting / Breaking / World / Health
-- region: most specific US city (e.g. "Washington D.C.", "New York", "Los Angeles") or country name for international, or "National"
-- breaking: true only if genuinely urgent breaking news
+        const prompt = `Analyze these ${articles.length} news headlines. Return ONLY a JSON array with ${articles.length} objects in the same order. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"US city name OR National OR country name","breaking":true or false}. Base lean on source: Fox News/WSJ/Breitbart=right, NYT/Guardian/NPR/CNN=left, Reuters/AP/BBC/Bloomberg=center.\n\n${lineList}`;
 
-Headlines:
-${lineList}`
-        );
-
+        const enriched = await callClaude(prompt);
         const clean = enriched.replace(/\`\`\`json|\`\`\`/g, "").trim();
         const match = clean.match(/\[[\s\S]*\]/);
         if (match) {
           const tags = JSON.parse(match[0]);
-          setAiArticles(initial.map((a, i) => ({
-            ...a,
-            lean: tags[i]?.lean || "center",
-            category: tags[i]?.category || "Breaking",
-            region: tags[i]?.region || "National",
-            breaking: tags[i]?.breaking || false,
-          })));
+          if (tags.length > 0) {
+            setAiArticles(initial.map((a, i) => ({
+              ...a,
+              lean: tags[i]?.lean || "center",
+              category: tags[i]?.category || "Breaking",
+              region: tags[i]?.region || "National",
+              breaking: tags[i]?.breaking || false,
+            })));
+          }
         }
       }
     } catch (e) {
