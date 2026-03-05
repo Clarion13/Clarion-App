@@ -1629,7 +1629,7 @@ function ClarionFinal() {
   };
 
   const CACHE_KEY = "clarion_feed_v3";
-  const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+  const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
 
   const loadAI = async (forceRefresh = false) => {
     // ── CACHE CHECK — serve instantly if fresh ──
