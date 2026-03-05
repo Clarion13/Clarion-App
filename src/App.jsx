@@ -1151,53 +1151,6 @@ function OnboardingScreen({ onDone }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────
-// BALANCE HISTORY CHART (sparkline of reading lean over sessions)
-// ─────────────────────────────────────────────────────────────────
-function BalanceHistoryChart({ snapshots }) {
-  if (!snapshots || snapshots.length < 2) return (
-    <div style={{...card(), borderRadius:14, padding:"16px", marginBottom:20, textAlign:"center"}}>
-      <p style={{fontFamily:F.text, fontSize:13, color:C.muted, margin:0}}>Read more stories to see your balance trend over time.</p>
-    </div>
-  );
-  const W = 300, H = 80, PAD = 16;
-  const pts = snapshots.slice(-20); // last 20 readings
-  const iW = W - PAD*2, iH = H - PAD*2;
-  const points = pts.map((v, i) => {
-    const x = PAD + (i / (pts.length-1)) * iW;
-    const y = PAD + iH - ((v + 1) / 2) * iH; // v is -1(left) to +1(right), center=0
-    return [x, y];
-  });
-  const polyline = points.map(p => p.join(",")).join(" ");
-  const area = `M${points[0][0]},${H} ` + points.map(p=>`L${p[0]},${p[1]}`).join(" ") + ` L${points[points.length-1][0]},${H} Z`;
-  const last = pts[pts.length-1];
-  const trend = last > 0.2 ? "right" : last < -0.2 ? "left" : "center";
-  const trendColor = leanColor(trend);
-  return (
-    <div style={{...card(), borderRadius:14, padding:"16px", marginBottom:20}}>
-      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12}}>
-        <p style={{fontFamily:F.text, fontSize:12, fontWeight:600, color:C.muted, margin:0, letterSpacing:"0.05em", textTransform:"uppercase"}}>Balance Trend</p>
-        <span style={{fontSize:11, fontWeight:600, color:trendColor, background:trendColor+"18", borderRadius:20, padding:"2px 8px", fontFamily:F.text}}>
-          {trend === "left" ? "◀ Leaning Left" : trend === "right" ? "▶ Leaning Right" : "● Balanced"}
-        </span>
-      </div>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block", overflow:"visible"}}>
-        {/* Center line */}
-        <line x1={PAD} y1={H/2} x2={W-PAD} y2={H/2} stroke={C.divider} strokeWidth="1" strokeDasharray="3,3"/>
-        {/* Labels */}
-        <text x={PAD} y={PAD+4} fontSize="8" fill={C.left} fontFamily={F.text} fontWeight="600">LEFT</text>
-        <text x={PAD} y={H-PAD+10} fontSize="8" fill={C.right} fontFamily={F.text} fontWeight="600">RIGHT</text>
-        {/* Area fill */}
-        <path d={area} fill={trendColor} opacity="0.08"/>
-        {/* Line */}
-        <polyline points={polyline} fill="none" stroke={trendColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        {/* End dot */}
-        <circle cx={points[points.length-1][0]} cy={points[points.length-1][1]} r="4" fill={trendColor}/>
-      </svg>
-      <p style={{fontFamily:F.text, fontSize:11, color:C.muted, margin:"8px 0 0"}}>Based on your last {pts.length} articles read</p>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────
 // COMPARE COVERAGE — side by side left/center/right on one story
@@ -1343,7 +1296,6 @@ export default function ClarionFinal() {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [followedTopics, setFollowedTopics] = useState(["Politics","Tech","World"]);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [balanceSnapshots, setBalanceSnapshots] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -1369,14 +1321,6 @@ export default function ClarionFinal() {
 
   const onRead=id=>{
     setHistory(v=>v.includes(id)?v:[...v,id]);
-    // Snapshot balance score for trend chart
-    const art = all.find(a=>a.id===id);
-    if (art) {
-      setBalanceSnapshots(prev => {
-        const score = art.lean==="left" ? -1 : art.lean==="right" ? 1 : 0;
-        return [...prev, score].slice(-40); // keep last 40
-      });
-    }
   };
 
   const loadAI = async () => {
@@ -1723,8 +1667,6 @@ export default function ClarionFinal() {
             <BiasGauge history={history} allArticles={all}/>
 
             {/* Balance trend chart */}
-            <BalanceHistoryChart snapshots={balanceSnapshots}/>
-
             {/* Topic following */}
             <div style={{marginBottom:24}}>
               <h3 style={{fontFamily:F.display,fontSize:17,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Your Topics</h3>
