@@ -1047,7 +1047,7 @@ const ONBOARDING_SLIDES = [
   {
     icon: "◎",
     title: "Welcome to Clarion.",
-    body: "News from every angle — left, center, and right — in one feed. No echo chambers, no algorithms hiding the full picture.",
+    body: "News from every angle — left, center, and right — in one feed. No echo chambers, no algorithms hiding the full picture. Loud & Clear.",
     color: C.orange,
   },
   {
@@ -1521,6 +1521,7 @@ export default function ClarionFinal() {
             }}>
               <span>Clar</span><span style={{ fontStyle: "italic" }}>i</span><span>on.</span>
             </div>
+            <p style={{fontFamily:F.text, fontSize:11, color:C.muted, margin:"2px 0 0", letterSpacing:"0.04em"}}>Loud &amp; Clear</p>
             {/* Search icon + Refresh */}
             <div style={{display:"flex", gap:8, alignItems:"center"}}>
               <button onClick={()=>setShowSearch(v=>!v)} style={{
