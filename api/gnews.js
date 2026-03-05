@@ -6,20 +6,35 @@ export default async function handler(req, res) {
 
   const key = process.env.GNEWS_API_KEY;
 
-  // RSS feeds for right-leaning outlets
-  const RSS_FEEDS = [
-    { url: "https://feeds.foxnews.com/foxnews/latest", source: "Fox News" },
-    { url: "https://nypost.com/feed/", source: "NY Post" },
-    { url: "https://www.breitbart.com/feed/", source: "Breitbart" },
-    { url: "https://www.dailywire.com/feeds/rss.xml", source: "Daily Wire" },
-    { url: "https://www.washingtonexaminer.com/feed", source: "Washington Examiner" },
+  // LEFT-leaning RSS feeds
+  const LEFT_FEEDS = [
+    { url: "https://feeds.npr.org/1001/rss.xml",                        source: "NPR" },
+    { url: "https://www.theguardian.com/us-news/rss",                   source: "The Guardian" },
+    { url: "https://feeds.washingtonpost.com/rss/national",             source: "Washington Post" },
+    { url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", source: "New York Times" },
+    { url: "https://www.huffpost.com/section/front-page/feed",          source: "HuffPost" },
   ];
 
-  // Parse RSS XML to extract articles
+  // CENTER / wire-service RSS feeds
+  const CENTER_FEEDS = [
+    { url: "https://feeds.reuters.com/reuters/topNews",                 source: "Reuters" },
+    { url: "https://feeds.bbci.co.uk/news/rss.xml",                    source: "BBC News" },
+    { url: "https://apnews.com/rss/apf-topnews",                       source: "AP News" },
+  ];
+
+  // RIGHT-leaning RSS feeds
+  const RIGHT_FEEDS = [
+    { url: "https://feeds.foxnews.com/foxnews/latest",                  source: "Fox News" },
+    { url: "https://nypost.com/feed/",                                  source: "NY Post" },
+    { url: "https://www.washingtonexaminer.com/feed",                   source: "Washington Examiner" },
+    { url: "https://www.dailywire.com/feeds/rss.xml",                   source: "Daily Wire" },
+    { url: "https://www.breitbart.com/feed/",                          source: "Breitbart" },
+  ];
+
   function parseRSS(xml, sourceName) {
     const items = [];
     const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
-    itemMatches.slice(0, 8).forEach(item => {
+    itemMatches.slice(0, 6).forEach(item => {
       const title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) ||
                      item.match(/<title>(.*?)<\/title>/))?.[1]?.trim();
       const link  = (item.match(/<link>(.*?)<\/link>/) ||
@@ -42,33 +57,42 @@ export default async function handler(req, res) {
     return items;
   }
 
-  try {
-    // Fetch GNews categories + RSS feeds in parallel
-    const gnewsCategories = ["general", "politics", "technology", "business", "world"];
-
-    const [gnewsResults, ...rssResults] = await Promise.all([
-      // GNews multi-category
-      Promise.all(
-        gnewsCategories.map(cat =>
-          fetch(`https://gnews.io/api/v4/top-headlines?category=${cat}&lang=en&country=us&max=8&apikey=${key}`)
-            .then(r => r.json())
-            .then(d => d.articles || [])
-            .catch(() => [])
-        )
-      ).then(r => r.flat()),
-
-      // RSS feeds
-      ...RSS_FEEDS.map(feed =>
+  async function fetchFeeds(feeds) {
+    const results = await Promise.all(
+      feeds.map(feed =>
         fetch(feed.url, { headers: { "User-Agent": "Mozilla/5.0" } })
           .then(r => r.text())
           .then(xml => parseRSS(xml, feed.source))
           .catch(() => [])
       )
+    );
+    return results.flat();
+  }
+
+  try {
+    const [leftArticles, centerArticles, rightArticles] = await Promise.all([
+      fetchFeeds(LEFT_FEEDS),
+      fetchFeeds(CENTER_FEEDS),
+      fetchFeeds(RIGHT_FEEDS),
     ]);
 
-    // Merge and deduplicate
+    // Cap each group equally so no lean dominates
+    const CAP = 13;
+    const balanced = [
+      ...leftArticles.slice(0, CAP),
+      ...centerArticles.slice(0, CAP),
+      ...rightArticles.slice(0, CAP),
+    ];
+
+    // Shuffle so articles are interleaved, not grouped by lean
+    for (let i = balanced.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [balanced[i], balanced[j]] = [balanced[j], balanced[i]];
+    }
+
+    // Deduplicate by URL
     const seen = new Set();
-    const articles = [...gnewsResults, ...rssResults.flat()].filter(a => {
+    const articles = balanced.filter(a => {
       if (!a.title || !a.url || seen.has(a.url)) return false;
       seen.add(a.url);
       return true;
