@@ -140,20 +140,14 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
   const [open, setOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
-  const [imgOk, setImgOk] = useState(!!a.image); // assume ok until proven otherwise
+  const [imgOk, setImgOk] = useState(!!a.image);
   const saved = bookmarks.includes(a.id);
   const lc = leanColor(a.lean);
   const dateStr = formatDate(a.publishedAt);
   const imgH = isLead ? 210 : isGrid ? 110 : 150;
 
-  const MIN_W = 400, MIN_H = 200; // minimum acceptable dimensions
-
-  const handleImgLoad = (e) => {
-    const { naturalWidth, naturalHeight } = e.target;
-    if (naturalWidth < MIN_W || naturalHeight < MIN_H) {
-      setImgOk(false); // too small — show fallback instead
-    }
-  };
+  // Update imgOk if article image changes (e.g. Unsplash fills in after load)
+  useEffect(() => { setImgOk(!!a.image); }, [a.image]);
 
   const handleImgError = () => setImgOk(false);
 
@@ -175,7 +169,6 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
           <div style={{ height:imgH, flexShrink:0, overflow:"hidden", background:C.surface }}>
             <img src={a.image} alt=""
               style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
-              onLoad={handleImgLoad}
               onError={handleImgError}/>
           </div>
         ) : (
@@ -1112,7 +1105,11 @@ function OnboardingScreen({ onDone }) {
         fontSize:28, fontWeight:700, color:C.text,
         textAlign:"center", margin:"0 0 16px",
         letterSpacing:"-0.04em", lineHeight:1.2,
-      }}>{s.title}</h1>
+      }}>
+        {slide === 0 ? (
+          <>Welcome to Clar<span style={{fontStyle:"italic"}}>i</span>on.</>
+        ) : s.title}
+      </h1>
       <p style={{
         fontFamily:F.text, fontSize:16, color:C.sub,
         textAlign:"center", lineHeight:1.7, margin:"0 0 48px",
@@ -1258,12 +1255,12 @@ export default function ClarionFinal() {
           verified: true,
         }));
 
-        // Build prompt for Claude enrichment
+        // Build prompt for Claude enrichment — now also asks for image search query
         const lineList = articles.map((a, i) =>
           `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}"`
         ).join("\n");
 
-        const prompt = `Analyze these ${articles.length} news headlines. Return ONLY a JSON array with ${articles.length} objects in the same order. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"US city name OR National OR country name","breaking":true or false}. Base lean on source: Fox News/WSJ/Breitbart=right, NYT/Guardian/NPR/CNN=left, Reuters/AP/BBC/Bloomberg=center.\n\n${lineList}`;
+        const prompt = `Analyze these ${articles.length} news headlines. Return ONLY a JSON array with ${articles.length} objects in the same order. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"US city name OR National OR country name","breaking":true or false,"imgQuery":"2-4 word Unsplash photo search query relevant to the story topic, avoid names of people, use subjects like 'capitol building' or 'stock market' or 'military soldiers'"}. Base lean on source: Fox News/WSJ/Breitbart=right, NYT/Guardian/NPR/CNN=left, Reuters/AP/BBC/Bloomberg=center.\n\n${lineList}`;
 
         const enriched = await callClaude(prompt);
         const clean = enriched.replace(/\`\`\`json|\`\`\`/g, "").trim();
@@ -1271,14 +1268,39 @@ export default function ClarionFinal() {
         if (match) {
           const tags = JSON.parse(match[0]);
           if (tags.length > 0) {
-            // Only set articles ONCE with enriched data — no intermediate state
-            setAiArticles(initial.map((a, i) => ({
+            // Build enriched articles — use RSS image if HD, otherwise queue for Unsplash
+            const enrichedArticles = initial.map((a, i) => ({
               ...a,
               lean: tags[i]?.lean || "center",
               category: tags[i]?.category || "Breaking",
               region: tags[i]?.region || "National",
               breaking: tags[i]?.breaking || false,
-            })));
+              imgQuery: tags[i]?.imgQuery || null,
+            }));
+
+            // Set articles immediately so feed appears
+            setAiArticles(enrichedArticles);
+
+            // Now fill missing images from Unsplash in batches (no API key needed)
+            // Use a stable seed per headline so same article always gets same photo
+            const needsImage = enrichedArticles.filter(a => !a.image && a.imgQuery);
+            if (needsImage.length > 0) {
+              const filled = await Promise.all(
+                needsImage.map(async a => {
+                  try {
+                    const seed = encodeURIComponent(a.imgQuery);
+                    // Unsplash source — 1200x800 landscape, seeded by query for consistency
+                    const imgUrl = `https://source.unsplash.com/1200x800/?${seed}`;
+                    return { id: a.id, image: imgUrl };
+                  } catch { return { id: a.id, image: null }; }
+                })
+              );
+              // Patch images into articles
+              setAiArticles(prev => prev.map(a => {
+                const patch = filled.find(f => f.id === a.id);
+                return patch && patch.image ? { ...a, image: patch.image } : a;
+              }));
+            }
           } else {
             setAiArticles(initial);
           }
