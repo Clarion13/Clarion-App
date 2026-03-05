@@ -146,7 +146,7 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
   const dateStr = formatDate(a.publishedAt);
   const imgH = isLead ? 210 : isGrid ? 110 : 150;
 
-  // Update imgOk if article image changes (e.g. Unsplash fills in after load)
+  // Update imgOk if article image prop changes
   useEffect(() => { setImgOk(!!a.image); }, [a.image]);
 
   const handleImgError = () => setImgOk(false);
@@ -1260,7 +1260,7 @@ export default function ClarionFinal() {
           `${i+1}. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}"`
         ).join("\n");
 
-        const prompt = `Analyze these ${articles.length} news headlines. Return ONLY a JSON array with ${articles.length} objects in the same order. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"US city name OR National OR country name","breaking":true or false,"imgQuery":"2-4 word Unsplash photo search query relevant to the story topic, avoid names of people, use subjects like 'capitol building' or 'stock market' or 'military soldiers'"}. Base lean on source: Fox News/WSJ/Breitbart=right, NYT/Guardian/NPR/CNN=left, Reuters/AP/BBC/Bloomberg=center.\n\n${lineList}`;
+        const prompt = `Analyze these ${articles.length} news headlines. Return ONLY a JSON array with ${articles.length} objects in the same order. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"US city name OR National OR country name","breaking":true or false}. Base lean on source: Fox News/WSJ/Breitbart=right, NYT/Guardian/NPR/CNN=left, Reuters/AP/BBC/Bloomberg=center.\n\n${lineList}`;
 
         const enriched = await callClaude(prompt);
         const clean = enriched.replace(/\`\`\`json|\`\`\`/g, "").trim();
@@ -1268,42 +1268,17 @@ export default function ClarionFinal() {
         if (match) {
           const tags = JSON.parse(match[0]);
           if (tags.length > 0) {
-            // Build enriched articles — use RSS image if HD, otherwise queue for Unsplash
+            // Build enriched articles with lean/category/region from Claude
             const enrichedArticles = initial.map((a, i) => ({
               ...a,
               lean: tags[i]?.lean || "center",
               category: tags[i]?.category || "Breaking",
               region: tags[i]?.region || "National",
               breaking: tags[i]?.breaking || false,
-              imgQuery: tags[i]?.imgQuery || null,
             }));
 
-            // Set articles immediately so feed appears (images fill in after)
-            setAiArticles(enrichedArticles.map(a => ({ ...a, image: null })));
-
-            // Fetch HD images directly from Pixabay (CORS-enabled, no proxy needed)
-            const PIXABAY_KEY = "54907044-d568d7fb9c66f6de3f087d7c2";
-            const withQuery = enrichedArticles.filter(a => a.imgQuery);
-            const BATCH = 5;
-            for (let bi = 0; bi < withQuery.length; bi += BATCH) {
-              const batch = withQuery.slice(bi, bi + BATCH);
-              const filled = await Promise.all(
-                batch.map(async a => {
-                  try {
-                    const r = await fetch(
-                      `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(a.imgQuery)}&image_type=photo&orientation=horizontal&min_width=1200&per_page=3&safesearch=true`
-                    );
-                    const d = await r.json();
-                    const hit = d.hits?.[0];
-                    return { id: a.id, image: hit?.largeImageURL || hit?.webformatURL || null };
-                  } catch { return { id: a.id, image: null }; }
-                })
-              );
-              setAiArticles(prev => prev.map(a => {
-                const patch = filled.find(f => f.id === a.id);
-                return patch && patch.image ? { ...a, image: patch.image } : a;
-              }));
-            }
+            // Use original RSS/GNews images directly
+            setAiArticles(enrichedArticles);
           } else {
             setAiArticles(initial);
           }
