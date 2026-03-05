@@ -936,7 +936,6 @@ export default function ClarionFinal() {
           region: "National",
           verified: true,
         }));
-        setAiArticles(initial);
 
         // Build prompt for Claude enrichment
         const lineList = articles.map((a, i) =>
@@ -951,6 +950,7 @@ export default function ClarionFinal() {
         if (match) {
           const tags = JSON.parse(match[0]);
           if (tags.length > 0) {
+            // Only set articles ONCE with enriched data — no intermediate state
             setAiArticles(initial.map((a, i) => ({
               ...a,
               lean: tags[i]?.lean || "center",
@@ -958,7 +958,11 @@ export default function ClarionFinal() {
               region: tags[i]?.region || "National",
               breaking: tags[i]?.breaking || false,
             })));
+          } else {
+            setAiArticles(initial);
           }
+        } else {
+          setAiArticles(initial);
         }
       }
     } catch (e) {
