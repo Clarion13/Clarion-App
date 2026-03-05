@@ -14,7 +14,8 @@ const DARK = {
   left:"#7BAFC4", right:"#C47B7B", center:"#E8956D", breaking:"#C47B7B",
 };
 // C is set dynamically — see App component
-let C = LIGHT;
+// C is a mutable ref — components always read the latest theme
+const C = { ...LIGHT };
 
 const F = {
   display: "-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif",
@@ -91,7 +92,7 @@ function callClaude(prompt) {
 // ─────────────────────────────────────────────────────────────────
 // SPINNER
 // ─────────────────────────────────────────────────────────────────
-function Spinner({ size=20, color=C.blue }) {
+function Spinner({ size=20, color=C.accent }) {
   return (
     <>
       <div style={{ width:size, height:size, border:`2px solid ${C.divider}`, borderTopColor:color, borderRadius:"50%", animation:"clarion-spin 0.8s linear infinite", flexShrink:0 }}/>
@@ -1076,7 +1077,7 @@ function OnboardingScreen({ onDone }) {
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:9999,
-      background: darkMode ? DARK.bg : LIGHT.bg,
+      background: C.bg,
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
       padding:"40px 32px",
     }}>
@@ -1335,8 +1336,9 @@ export default function ClarionFinal() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [compareStory, setCompareStory] = useState(null);
 
-  // Wire C to darkMode — all components read C from closure
-  C = darkMode ? DARK : LIGHT;
+  // Wire C to darkMode — mutate in place so all components see the update
+  const theme = darkMode ? DARK : LIGHT;
+  Object.assign(C, theme);
 
   const all=[...aiArticles,...ARTICLES];
 
@@ -1800,7 +1802,7 @@ export default function ClarionFinal() {
             {briefingLoading&&<div style={{display:"flex",gap:12,alignItems:"center",padding:"20px 0",marginBottom:16}}><Spinner/><p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:0}}>Crafting your briefing…</p></div>}
             {briefing&&(
               <div style={{marginBottom:32}}>
-                <p style={{fontFamily:F.text,fontSize:15,color:C.sub,lineHeight:1.7,margin:"0 0 24px",paddingLeft:14,borderLeft:`3px solid ${C.blue}`}}>{briefing.overview}</p>
+                <p style={{fontFamily:F.text,fontSize:15,color:C.sub,lineHeight:1.7,margin:"0 0 24px",paddingLeft:14,borderLeft:`3px solid ${C.accent}`}}>{briefing.overview}</p>
                 {(briefing.stories||[]).map((s,i)=>(
                   <div key={i} style={{...glass(0.6),borderRadius:14,padding:"14px 16px",marginBottom:10}}>
                     <p style={{fontFamily:F.display,fontSize:15,fontWeight:600,color:C.text,margin:"0 0 6px"}}>{s.headline}</p>
