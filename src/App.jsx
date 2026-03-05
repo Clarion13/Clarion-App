@@ -26,13 +26,13 @@ const F = {
 const card = () => ({
   background: C.card,
   border: `1px solid ${C.border}`,
-  boxShadow: "0 1px 4px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04)",
+  boxShadow: "none",
 });
 
 // Solid button style
 const solidBtn = (active) => ({
   background: active ? "rgba(0,0,0,0.08)" : C.surface,
-  border: `1px solid ${active ? "rgba(0,0,0,0.18)" : C.border}`,
+  border: `1px solid ${C.border}`,
   borderRadius: 980,
   color: active ? C.text : C.muted,
   fontWeight: active ? 600 : 400,
@@ -157,7 +157,7 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
   );
 
   return (
-    <div style={{ borderRadius:20, overflow:"hidden", ...glass(0.68), boxShadow:"0 2px 16px rgba(0,0,0,0.05)", display:"flex", flexDirection:"column" }}>
+    <div style={{ borderRadius:20, overflow:"hidden", ...glass(0.68), boxShadow:"none", display:"flex", flexDirection:"column" }}>
 
       {/* ── COLLAPSED ── */}
       <div onClick={()=>{ setOpen(v=>!v); onRead(a.id); }} style={{ cursor:"pointer", flex:1, display:"flex", flexDirection:"column" }}>
@@ -1047,7 +1047,6 @@ const ONBOARDING_SLIDES = [
   {
     icon: "◎",
     title: "Welcome to Clarion.",
-    body: "News from every angle — left, center, and right — in one feed. No echo chambers, no algorithms hiding the full picture.",
     color: C.orange,
   },
   {
@@ -1526,7 +1525,7 @@ export default function ClarionFinal() {
               <button onClick={()=>setShowSearch(v=>!v)} style={{
                 width:36, height:36, borderRadius:980,
                 display:"flex", alignItems:"center", justifyContent:"center",
-                ...glass(0.65), border:"1px solid rgba(0,0,0,0.08)",
+                background:C.surface, border:`1px solid ${C.border}`,
                 cursor:"pointer", flexShrink:0, transition:"all 0.2s",
               }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showSearch ? C.text : C.muted} strokeWidth="2" strokeLinecap="round">
@@ -1628,7 +1627,7 @@ export default function ClarionFinal() {
                     border: `1px solid ${category===c ? C.border : C.divider}`,
                     background: category===c ? C.card : C.surface,
                     color: category===c ? C.text : C.muted,
-                    boxShadow: category===c ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                    boxShadow: "none",
                   }}>
                     {c}
                   </button>
@@ -1839,7 +1838,7 @@ export default function ClarionFinal() {
         background: C.bg,
         borderTop: `1px solid ${C.border}`,
         borderRadius:"20px 20px 0 0",
-        boxShadow: "0 -2px 20px rgba(0,0,0,0.06)",
+        boxShadow: "none",
         padding:"10px 8px 20px",
       }}>
         <div style={{
