@@ -140,10 +140,29 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
   const [open, setOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
+  const [imgOk, setImgOk] = useState(!!a.image); // assume ok until proven otherwise
   const saved = bookmarks.includes(a.id);
   const lc = leanColor(a.lean);
   const dateStr = formatDate(a.publishedAt);
   const imgH = isLead ? 210 : isGrid ? 110 : 150;
+
+  const MIN_W = 400, MIN_H = 200; // minimum acceptable dimensions
+
+  const handleImgLoad = (e) => {
+    const { naturalWidth, naturalHeight } = e.target;
+    if (naturalWidth < MIN_W || naturalHeight < MIN_H) {
+      setImgOk(false); // too small — show fallback instead
+    }
+  };
+
+  const handleImgError = () => setImgOk(false);
+
+  const Fallback = () => (
+    <div style={{ height:imgH, flexShrink:0, background:`linear-gradient(135deg,${lc}18,${lc}08)`, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:4 }}>
+      <div style={{ fontSize: isGrid ? 22 : 30, fontWeight:700, color:lc, opacity:0.6, fontFamily:"'Times New Roman',serif", lineHeight:1 }}>{(a.source||"?")[0].toUpperCase()}</div>
+      <div style={{ fontSize:10, color:lc, opacity:0.45, fontFamily:F.text }}>{a.source}</div>
+    </div>
+  );
 
   return (
     <div style={{ borderRadius:20, overflow:"hidden", ...glass(0.68), boxShadow:"0 2px 16px rgba(0,0,0,0.05)", display:"flex", flexDirection:"column" }}>
@@ -152,16 +171,15 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
       <div onClick={()=>{ setOpen(v=>!v); onRead(a.id); }} style={{ cursor:"pointer", flex:1, display:"flex", flexDirection:"column" }}>
 
         {/* Image */}
-        {a.image ? (
+        {a.image && imgOk ? (
           <div style={{ height:imgH, flexShrink:0, overflow:"hidden", background:C.surface }}>
-            <img src={a.image} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
-              onError={e=>{ e.target.style.display="none"; e.target.parentElement.setAttribute("data-fallback","1"); e.target.parentElement.style.display="flex"; e.target.parentElement.style.alignItems="center"; e.target.parentElement.style.justifyContent="center"; e.target.parentElement.style.background=`linear-gradient(135deg,${lc}18,${lc}08)`; e.target.parentElement.innerHTML=`<div style="text-align:center"><div style="font-size:${isGrid?22:30}px;font-weight:700;color:${lc};opacity:0.6;font-family:Times New Roman,serif">${(a.source||"?")[0].toUpperCase()}</div><div style="font-size:10px;color:${lc};opacity:0.5;font-family:sans-serif;margin-top:4px">${a.source||""}</div></div>`; }}/>
+            <img src={a.image} alt=""
+              style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
+              onLoad={handleImgLoad}
+              onError={handleImgError}/>
           </div>
         ) : (
-          <div style={{ height:imgH, flexShrink:0, background:`linear-gradient(135deg,${lc}18,${lc}08)`, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:4 }}>
-            <div style={{ fontSize: isGrid ? 22 : 30, fontWeight:700, color:lc, opacity:0.6, fontFamily:"'Times New Roman',serif", lineHeight:1 }}>{(a.source||"?")[0].toUpperCase()}</div>
-            <div style={{ fontSize:10, color:lc, opacity:0.45, fontFamily:F.text }}>{a.source}</div>
-          </div>
+          <Fallback/>
         )}
 
         {/* Text */}
