@@ -32,32 +32,67 @@ export default async function handler(req, res) {
   function extractImage(item) {
     // Try every common RSS image pattern in order of reliability
 
-    // 1. <media:content url="..."> or <media:thumbnail url="...">
-    const mediaContent = item.match(/<media:content[^>]+url=["']([^"']+)["']/i)?.[1];
-    if (mediaContent && mediaContent.match(/\.(jpg|jpeg|png|webp)/i)) return mediaContent;
+    const candidates = [];
 
+    // 1. <media:content url="..."> — often has width attribute, prefer larger ones
+    const mediaMatches = [...(item.matchAll(/<media:content[^>]+url=["']([^"']+)["'][^>]*/gi) || [])];
+    mediaMatches.forEach(m => {
+      const url = m[1];
+      const widthMatch = m[0].match(/width=["']?(\d+)/i);
+      const width = widthMatch ? parseInt(widthMatch[1]) : 500;
+      if (url.match(/\.(jpg|jpeg|png|webp)/i)) candidates.push({ url, width });
+    });
+    // Pick largest media:content
+    if (candidates.length) {
+      candidates.sort((a,b) => b.width - a.width);
+      if (isHDUrl(candidates[0].url)) return candidates[0].url;
+    }
+
+    // 2. <media:thumbnail url="...">
     const mediaThumbnail = item.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i)?.[1];
-    if (mediaThumbnail && mediaThumbnail.match(/\.(jpg|jpeg|png|webp)/i)) return mediaThumbnail;
+    if (mediaThumbnail && mediaThumbnail.match(/\.(jpg|jpeg|png|webp)/i) && isHDUrl(mediaThumbnail)) return mediaThumbnail;
 
-    // 2. <enclosure url="..." type="image/...">
+    // 3. <enclosure url="..." type="image/...">
     const enclosure = item.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image/i)?.[1];
-    if (enclosure) return enclosure;
+    if (enclosure && isHDUrl(enclosure)) return enclosure;
 
-    // 3. <image><url>...</url></image> inside item
+    // 4. <image><url>...</url></image>
     const imageTag = item.match(/<image>\s*<url>(https?[^<]+)<\/url>/i)?.[1];
-    if (imageTag) return imageTag;
+    if (imageTag && isHDUrl(imageTag)) return imageTag;
 
-    // 4. og:image or any https image URL inside description/content
+    // 5. Any image URL inside description/content:encoded
     const descBlock = item.match(/<description>([\s\S]*?)<\/description>/i)?.[1] ||
                       item.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/i)?.[1] || "";
-    const imgInDesc = descBlock.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/i)?.[0];
-    if (imgInDesc) return imgInDesc;
+    const imgInDesc = descBlock.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/gi) || [];
+    const hdFromDesc = imgInDesc.find(u => isHDUrl(u));
+    if (hdFromDesc) return hdFromDesc;
 
-    // 5. Any https image URL anywhere in the item
-    const anyImg = item.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/i)?.[0];
-    if (anyImg) return anyImg;
+    // 6. Last resort — any image URL anywhere, still must pass HD check
+    const anyImgs = item.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/gi) || [];
+    return anyImgs.find(u => isHDUrl(u)) || null;
+  }
 
-    return null;
+  // Reject URLs that are clearly thumbnails or low-res
+  function isHDUrl(url) {
+    if (!url) return false;
+    const u = url.toLowerCase();
+    // Reject known small size patterns
+    const badPatterns = [
+      /[_\-](\d{1,2}x\d{1,2})[_\-\.]/,   // e.g. _50x50.
+      /[_\-](thumb|thumbnail|tiny|icon|avatar|favicon|logo|badge|pixel|spacer|placeholder)/,
+      /\/(\d{1,2})x(\d{1,2})\//,            // /50x50/
+    ];
+    if (badPatterns.some(p => p.test(u))) return false;
+
+    // Prefer URLs with explicit large dimensions in them
+    const sizeMatch = u.match(/[_\-](\d{3,4})x(\d{3,4})/);
+    if (sizeMatch) {
+      const w = parseInt(sizeMatch[1]), h = parseInt(sizeMatch[2]);
+      return w >= 400 && h >= 200;
+    }
+
+    // If no size info in URL, accept it (let the app do a final check)
+    return true;
   }
 
   function parseRSS(xml, sourceName) {
