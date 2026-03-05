@@ -94,39 +94,11 @@ function callClaude(prompt) {
 // ─────────────────────────────────────────────────────────────────
 // SPINNER
 // ─────────────────────────────────────────────────────────────────
-function Spinner({ size=20, color="#E8956D" }) {
-  const s = size * 2.8;
+function Spinner({ size=20, color=C.blue }) {
   return (
     <>
-      <style>{`
-        @keyframes clarion-pulse {
-          0%,100% { opacity:1; transform:scale(1); }
-          50% { opacity:0.5; transform:scale(0.88); }
-        }
-        @keyframes clarion-glow {
-          0%,100% { filter: drop-shadow(0 0 3px #E8956D88); }
-          50% { filter: drop-shadow(0 0 10px #E8956Dcc); }
-        }
-      `}</style>
-      <svg width={s} height={s * 0.72} viewBox="0 0 120 86" fill="none"
-        style={{ animation:"clarion-pulse 1.1s ease-in-out infinite, clarion-glow 1.1s ease-in-out infinite", flexShrink:0 }}
-        xmlns="http://www.w3.org/2000/svg">
-        {/* Bell (left flared end) */}
-        <path d="M6 28 L6 14 Q6 8 14 8 L22 10 L22 32 Q14 34 6 28 Z" fill={color}/>
-        {/* Main horizontal tube */}
-        <rect x="22" y="13" width="76" height="14" rx="7" fill={color}/>
-        {/* Right mouthpiece end */}
-        <path d="M98 14 L106 16 L106 24 L98 26 Z" fill={color}/>
-        {/* Valves */}
-        <rect x="46" y="19" width="4" height="10" rx="2" fill="#1a0a00"/>
-        <rect x="54" y="19" width="4" height="10" rx="2" fill="#1a0a00"/>
-        <rect x="62" y="19" width="4" height="10" rx="2" fill="#1a0a00"/>
-        <rect x="70" y="19" width="4" height="10" rx="2" fill="#1a0a00"/>
-        {/* Curved arch below — left side down */}
-        <path d="M22 26 Q18 34 14 44 Q10 58 18 70 Q24 80 34 82" stroke={color} strokeWidth="10" strokeLinecap="round" fill="none"/>
-        {/* Curved arch below — right side down */}
-        <path d="M98 26 Q102 34 106 44 Q110 58 102 70 Q96 80 86 82" stroke={color} strokeWidth="10" strokeLinecap="round" fill="none"/>
-      </svg>
+      <div style={{ width:size, height:size, border:`2px solid ${C.divider}`, borderTopColor:color, borderRadius:"50%", animation:"clarion-spin 0.8s linear infinite", flexShrink:0 }}/>
+      <style>{`@keyframes clarion-spin{to{transform:rotate(360deg)}}`}</style>
     </>
   );
 }
