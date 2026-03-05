@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ── PASTEL GREEN + CREAM — SOLID PROFESSIONAL ────────────────────
 const C = {
@@ -267,288 +267,164 @@ function BiasGauge({ history, allArticles }) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// HEATMAP
+// HEATMAP — Mapbox interactive map
 // ─────────────────────────────────────────────────────────────────
+const MAPBOX_TOKEN = "pk.eyJ1IjoiY2xhcmlvbjEzIiwiYSI6ImNtbWNxMmxuOTA4dnQycXE1a2h0OWV1ZHUifQ.Vix6Aa28lbFYADZP1uOkFA";
+
+const CITIES = [
+  {name:"New York",lat:40.7128,lng:-74.0060},
+  {name:"Los Angeles",lat:34.0522,lng:-118.2437},
+  {name:"Chicago",lat:41.8781,lng:-87.6298},
+  {name:"Houston",lat:29.7604,lng:-95.3698},
+  {name:"Phoenix",lat:33.4484,lng:-112.0740},
+  {name:"Philadelphia",lat:39.9526,lng:-75.1652},
+  {name:"San Antonio",lat:29.4241,lng:-98.4936},
+  {name:"San Diego",lat:32.7157,lng:-117.1611},
+  {name:"Dallas",lat:32.7767,lng:-96.7970},
+  {name:"San Francisco",lat:37.7749,lng:-122.4194},
+  {name:"Seattle",lat:47.6062,lng:-122.3321},
+  {name:"Denver",lat:39.7392,lng:-104.9903},
+  {name:"Washington D.C.",lat:38.9072,lng:-77.0369},
+  {name:"Nashville",lat:36.1627,lng:-86.7816},
+  {name:"Atlanta",lat:33.7490,lng:-84.3880},
+  {name:"Miami",lat:25.7617,lng:-80.1918},
+  {name:"Boston",lat:42.3601,lng:-71.0589},
+  {name:"Austin",lat:30.2672,lng:-97.7431},
+  {name:"Las Vegas",lat:36.1699,lng:-115.1398},
+  {name:"Portland",lat:45.5051,lng:-122.6750},
+  {name:"Minneapolis",lat:44.9778,lng:-93.2650},
+  {name:"Detroit",lat:42.3314,lng:-83.0458},
+  {name:"New Orleans",lat:29.9511,lng:-90.0715},
+  {name:"Kansas City",lat:39.0997,lng:-94.5786},
+  {name:"Salt Lake City",lat:40.7608,lng:-111.8910},
+  {name:"Sacramento",lat:38.5816,lng:-121.4944},
+  {name:"Pittsburgh",lat:40.4406,lng:-79.9959},
+  {name:"Charlotte",lat:35.2271,lng:-80.8431},
+  {name:"Indianapolis",lat:39.7684,lng:-86.1581},
+  {name:"Columbus",lat:39.9612,lng:-82.9988},
+  {name:"San Jose",lat:37.3382,lng:-121.8863},
+  {name:"Memphis",lat:35.1495,lng:-90.0490},
+  {name:"Baltimore",lat:39.2904,lng:-76.6122},
+  {name:"Oklahoma City",lat:35.4676,lng:-97.5164},
+  {name:"Albuquerque",lat:35.0844,lng:-106.6504},
+  {name:"Tucson",lat:32.2226,lng:-110.9747},
+  {name:"Milwaukee",lat:43.0389,lng:-87.9065},
+  {name:"Anchorage",lat:61.2181,lng:-149.9003},
+  {name:"Honolulu",lat:21.3069,lng:-157.8583},
+  {name:"Boise",lat:43.6150,lng:-116.2023},
+  {name:"Richmond",lat:37.5407,lng:-77.4360},
+  {name:"Tampa",lat:27.9506,lng:-82.4572},
+  {name:"Orlando",lat:28.5383,lng:-81.3792},
+  {name:"Cincinnati",lat:39.1031,lng:-84.5120},
+  {name:"Cleveland",lat:41.4993,lng:-81.6944},
+  {name:"St. Louis",lat:38.6270,lng:-90.1994},
+  {name:"Omaha",lat:41.2565,lng:-95.9345},
+  {name:"Buffalo",lat:42.8864,lng:-78.8784},
+];
+
+function fuzzyMatch(region) {
+  if (!region) return null;
+  const r = region.toLowerCase().trim();
+  return CITIES.find(c => {
+    const n = c.name.toLowerCase();
+    return n === r || r.includes(n) || n.includes(r) ||
+      (r.includes("new york") && c.name === "New York") ||
+      (r.includes("d.c") && c.name === "Washington D.C.") ||
+      (r.includes("washington") && c.name === "Washington D.C.") ||
+      (r.includes("sf") && c.name === "San Francisco") ||
+      (r.includes("silicon valley") && c.name === "San Jose");
+  });
+}
+
 function HeatMap({ articles, onRegion }) {
-  const [hov, setHov] = useState(null);
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const markersRef = useRef([]);
+  const [selected, setSelected] = useState(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
-  // Real US state paths (simplified, accurate outlines) in a 960x600 viewBox
-  const STATES = [
-    { name:"Alabama",       abbr:"AL", d:"M 550,370 L 565,370 L 568,430 L 545,432 L 542,400 Z" },
-    { name:"Alaska",        abbr:"AK", d:"M 100,480 L 160,480 L 180,520 L 140,540 L 90,520 Z" },
-    { name:"Arizona",       abbr:"AZ", d:"M 160,310 L 220,310 L 225,390 L 155,390 L 150,350 Z" },
-    { name:"Arkansas",      abbr:"AR", d:"M 510,330 L 555,328 L 558,368 L 510,370 Z" },
-    { name:"California",    abbr:"CA", d:"M 80,200 L 130,180 L 148,240 L 155,320 L 100,360 L 78,300 Z" },
-    { name:"Colorado",      abbr:"CO", d:"M 250,255 L 340,252 L 342,308 L 252,310 Z" },
-    { name:"Connecticut",   abbr:"CT", d:"M 760,178 L 778,176 L 780,192 L 762,194 Z" },
-    { name:"Delaware",      abbr:"DE", d:"M 742,210 L 752,208 L 754,225 L 744,226 Z" },
-    { name:"Florida",       abbr:"FL", d:"M 570,390 L 620,388 L 650,420 L 620,470 L 580,460 L 560,430 Z" },
-    { name:"Georgia",       abbr:"GA", d:"M 570,355 L 610,353 L 615,390 L 570,392 Z" },
-    { name:"Hawaii",        abbr:"HI", d:"M 240,530 L 300,530 L 305,550 L 235,552 Z" },
-    { name:"Idaho",         abbr:"ID", d:"M 165,130 L 210,120 L 215,200 L 180,215 L 162,195 Z" },
-    { name:"Illinois",      abbr:"IL", d:"M 530,245 L 558,243 L 562,315 L 528,318 Z" },
-    { name:"Indiana",       abbr:"IN", d:"M 558,245 L 583,244 L 585,310 L 560,312 Z" },
-    { name:"Iowa",          abbr:"IA", d:"M 460,220 L 528,218 L 530,258 L 462,260 Z" },
-    { name:"Kansas",        abbr:"KS", d:"M 348,285 L 455,282 L 457,322 L 350,325 Z" },
-    { name:"Kentucky",      abbr:"KY", d:"M 558,300 L 640,295 L 645,325 L 558,330 Z" },
-    { name:"Louisiana",     abbr:"LA", d:"M 490,390 L 545,388 L 548,425 L 505,440 L 488,420 Z" },
-    { name:"Maine",         abbr:"ME", d:"M 800,100 L 830,95 L 835,145 L 802,148 Z" },
-    { name:"Maryland",      abbr:"MD", d:"M 700,228 L 748,224 L 750,244 L 702,248 Z" },
-    { name:"Massachusetts", abbr:"MA", d:"M 760,158 L 808,155 L 810,178 L 762,180 Z" },
-    { name:"Michigan",      abbr:"MI", d:"M 558,175 L 608,165 L 615,215 L 560,220 Z" },
-    { name:"Minnesota",     abbr:"MN", d:"M 440,125 L 510,120 L 515,195 L 442,198 Z" },
-    { name:"Mississippi",   abbr:"MS", d:"M 530,360 L 558,358 L 560,418 L 528,420 Z" },
-    { name:"Missouri",      abbr:"MO", d:"M 460,285 L 532,282 L 535,345 L 462,348 Z" },
-    { name:"Montana",       abbr:"MT", d:"M 198,100 L 358,92 L 362,178 L 200,185 Z" },
-    { name:"Nebraska",      abbr:"NE", d:"M 348,245 L 455,242 L 457,282 L 350,285 Z" },
-    { name:"Nevada",        abbr:"NV", d:"M 128,200 L 175,185 L 180,295 L 130,310 Z" },
-    { name:"New Hampshire", abbr:"NH", d:"M 780,140 L 798,138 L 800,175 L 782,176 Z" },
-    { name:"New Jersey",    abbr:"NJ", d:"M 742,195 L 760,192 L 762,225 L 744,228 Z" },
-    { name:"New Mexico",    abbr:"NM", d:"M 225,315 L 300,312 L 302,390 L 227,392 Z" },
-    { name:"New York",      abbr:"NY", d:"M 690,148 L 778,140 L 782,195 L 692,200 Z" },
-    { name:"North Carolina",abbr:"NC", d:"M 620,305 L 735,298 L 738,328 L 622,335 Z" },
-    { name:"North Dakota",  abbr:"ND", d:"M 345,118 L 445,112 L 447,158 L 347,162 Z" },
-    { name:"Ohio",          abbr:"OH", d:"M 585,230 L 638,227 L 642,295 L 587,298 Z" },
-    { name:"Oklahoma",      abbr:"OK", d:"M 345,328 L 505,323 L 508,368 L 347,372 Z" },
-    { name:"Oregon",        abbr:"OR", d:"M 82,148 L 178,138 L 182,210 L 84,218 Z" },
-    { name:"Pennsylvania",  abbr:"PA", d:"M 650,195 L 742,190 L 745,228 L 652,233 Z" },
-    { name:"Rhode Island",  abbr:"RI", d:"M 790,178 L 802,177 L 803,190 L 791,191 Z" },
-    { name:"South Carolina",abbr:"SC", d:"M 620,335 L 670,332 L 673,370 L 622,372 Z" },
-    { name:"South Dakota",  abbr:"SD", d:"M 345,160 L 447,155 L 450,205 L 347,208 Z" },
-    { name:"Tennessee",     abbr:"TN", d:"M 535,328 L 650,322 L 653,352 L 537,358 Z" },
-    { name:"Texas",         abbr:"TX", d:"M 295,330 L 480,325 L 485,445 L 360,470 L 278,420 Z" },
-    { name:"Utah",          abbr:"UT", d:"M 198,220 L 255,217 L 258,305 L 200,308 Z" },
-    { name:"Vermont",       abbr:"VT", d:"M 762,138 L 782,136 L 784,160 L 764,162 Z" },
-    { name:"Virginia",      abbr:"VA", d:"M 645,262 L 742,256 L 745,300 L 647,305 Z" },
-    { name:"Washington",    abbr:"WA", d:"M 82,88 L 185,80 L 188,142 L 84,148 Z" },
-    { name:"Washington D.C.",abbr:"D.C.",d:"M 722,248 L 732,246 L 733,256 L 723,257 Z" },
-    { name:"West Virginia", abbr:"WV", d:"M 638,258 L 680,254 L 682,298 L 640,302 Z" },
-    { name:"Wisconsin",     abbr:"WI", d:"M 505,158 L 558,153 L 562,220 L 507,224 Z" },
-    { name:"Wyoming",       abbr:"WY", d:"M 245,178 L 358,172 L 360,248 L 247,252 Z" },
-  ];
+  const cityCount = {};
+  articles.forEach(a => {
+    const city = fuzzyMatch(a.region);
+    if (city) cityCount[city.name] = (cityCount[city.name] || 0) + 1;
+  });
 
-  // Regions with real lat/lon coordinates
-  const REGIONS = [
-    // National
-    { name:"National",        abbr:"US",  lat:39.50, lon:-98.35 },
-    // Northeast
-    { name:"New York",        abbr:"NYC", lat:40.71, lon:-74.01 },
-    { name:"Boston",          abbr:"BOS", lat:42.36, lon:-71.06 },
-    { name:"Philadelphia",    abbr:"PHL", lat:39.95, lon:-75.16 },
-    { name:"Washington D.C.", abbr:"DC",  lat:38.91, lon:-77.04 },
-    { name:"Baltimore",       abbr:"BAL", lat:39.29, lon:-76.61 },
-    { name:"Pittsburgh",      abbr:"PIT", lat:40.44, lon:-79.99 },
-    { name:"Buffalo",         abbr:"BUF", lat:42.88, lon:-78.88 },
-    // Southeast
-    { name:"Miami",           abbr:"MIA", lat:25.77, lon:-80.19 },
-    { name:"Atlanta",         abbr:"ATL", lat:33.75, lon:-84.39 },
-    { name:"Charlotte",       abbr:"CLT", lat:35.22, lon:-80.84 },
-    { name:"Orlando",         abbr:"ORL", lat:28.54, lon:-81.38 },
-    { name:"Tampa",           abbr:"TPA", lat:27.95, lon:-82.46 },
-    { name:"Nashville",       abbr:"NSH", lat:36.17, lon:-86.78 },
-    { name:"Memphis",         abbr:"MEM", lat:35.15, lon:-90.05 },
-    { name:"New Orleans",     abbr:"NO",  lat:29.95, lon:-90.07 },
-    { name:"Richmond",        abbr:"RIC", lat:37.54, lon:-77.43 },
-    // Midwest
-    { name:"Chicago",         abbr:"CHI", lat:41.88, lon:-87.63 },
-    { name:"Detroit",         abbr:"DET", lat:42.33, lon:-83.05 },
-    { name:"Minneapolis",     abbr:"MIN", lat:44.98, lon:-93.27 },
-    { name:"Cleveland",       abbr:"CLE", lat:41.50, lon:-81.69 },
-    { name:"Columbus",        abbr:"CMH", lat:39.96, lon:-82.99 },
-    { name:"Indianapolis",    abbr:"IND", lat:39.77, lon:-86.16 },
-    { name:"Milwaukee",       abbr:"MKE", lat:43.04, lon:-87.91 },
-    { name:"Kansas City",     abbr:"KC",  lat:39.10, lon:-94.58 },
-    { name:"St. Louis",       abbr:"STL", lat:38.63, lon:-90.20 },
-    { name:"Cincinnati",      abbr:"CIN", lat:39.10, lon:-84.51 },
-    { name:"Omaha",           abbr:"OMA", lat:41.26, lon:-95.94 },
-    // South / Central
-    { name:"Texas",           abbr:"TX",  lat:31.97, lon:-99.90 },
-    { name:"Houston",         abbr:"HOU", lat:29.76, lon:-95.37 },
-    { name:"Dallas",          abbr:"DAL", lat:32.78, lon:-96.80 },
-    { name:"San Antonio",     abbr:"SAT", lat:29.42, lon:-98.49 },
-    { name:"Austin",          abbr:"AUS", lat:30.27, lon:-97.74 },
-    { name:"Oklahoma City",   abbr:"OKC", lat:35.47, lon:-97.52 },
-    // Mountain / Southwest
-    { name:"Denver",          abbr:"DEN", lat:39.74, lon:-104.98 },
-    { name:"Phoenix",         abbr:"PHX", lat:33.45, lon:-112.07 },
-    { name:"Las Vegas",       abbr:"LAS", lat:36.17, lon:-115.14 },
-    { name:"Salt Lake City",  abbr:"SLC", lat:40.76, lon:-111.89 },
-    { name:"Albuquerque",     abbr:"ABQ", lat:35.08, lon:-106.65 },
-    { name:"Tucson",          abbr:"TUS", lat:32.22, lon:-110.97 },
-    { name:"Boise",           abbr:"BOI", lat:43.62, lon:-116.20 },
-    // West Coast
-    { name:"Los Angeles",     abbr:"LA",  lat:34.05, lon:-118.24 },
-    { name:"San Francisco",   abbr:"SF",  lat:37.77, lon:-122.42 },
-    { name:"Seattle",         abbr:"SEA", lat:47.61, lon:-122.33 },
-    { name:"Portland",        abbr:"PDX", lat:45.52, lon:-122.68 },
-    { name:"San Diego",       abbr:"SD",  lat:32.72, lon:-117.16 },
-    { name:"Sacramento",      abbr:"SAC", lat:38.58, lon:-121.49 },
-    { name:"Anchorage",       abbr:"ANC", lat:61.22, lon:-149.90 },
-    { name:"Honolulu",        abbr:"HNL", lat:21.31, lon:-157.86 },
-    // Extra regions often in news
-    { name:"Silicon Valley",  abbr:"SV",  lat:37.39, lon:-122.08 },
-    { name:"Wall Street",     abbr:"WST", lat:40.71, lon:-74.01 },
-    { name:"Capitol Hill",    abbr:"CAP", lat:38.89, lon:-77.01 },
-    { name:"Florida",         abbr:"FL",  lat:27.99, lon:-81.76 },
-    { name:"California",      abbr:"CA",  lat:36.78, lon:-119.42 },
-  ].map(r => ({ ...r, count: articles.filter(a =>
-    a.region === r.name || a.region === r.abbr ||
-    (r.name === "New York" && (a.region === "New York City" || a.region === "NYC")) ||
-    (r.name === "Washington D.C." && (a.region === "Washington" || a.region === "D.C." || a.region === "DC")) ||
-    (r.name === "Los Angeles" && a.region === "LA") ||
-    (r.name === "San Francisco" && (a.region === "SF" || a.region === "Bay Area")) ||
-    (r.name === "Chicago" && a.region === "CHI")
-  ).length }));
+  useEffect(() => {
+    if (mapInstance.current) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css";
+    document.head.appendChild(link);
 
-  const maxCount = Math.max(1, ...REGIONS.map(r => r.count));
+    const script = document.createElement("script");
+    script.src = "https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js";
+    script.onload = () => {
+      window.mapboxgl.accessToken = MAPBOX_TOKEN;
+      const map = new window.mapboxgl.Map({
+        container: mapRef.current,
+        style: "mapbox://styles/mapbox/light-v11",
+        center: [-96, 38],
+        zoom: 3.2,
+        minZoom: 2,
+        maxZoom: 10,
+      });
+      map.on("load", () => { setMapLoaded(true); mapInstance.current = map; });
+    };
+    document.head.appendChild(script);
+    return () => { if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; } };
+  }, []);
+
+  useEffect(() => {
+    if (!mapLoaded || !mapInstance.current) return;
+    const map = mapInstance.current;
+    markersRef.current.forEach(m => m.remove());
+    markersRef.current = [];
+    CITIES.forEach(city => {
+      const count = cityCount[city.name] || 0;
+      if (count === 0) return;
+      const size = Math.min(14 + count * 6, 44);
+      const el = document.createElement("div");
+      el.style.cssText = `width:${size}px;height:${size}px;background:#E8956D;border:2.5px solid #fff;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:${size > 24 ? 11 : 9}px;font-weight:700;color:#fff;box-shadow:0 2px 12px rgba(232,149,109,0.5);`;
+      el.innerHTML = count;
+      el.addEventListener("click", () => {
+        setSelected(city.name);
+        onRegion && onRegion(city.name);
+        map.flyTo({ center: [city.lng, city.lat], zoom: 7, speed: 1.2 });
+      });
+      const marker = new window.mapboxgl.Marker({ element: el })
+        .setLngLat([city.lng, city.lat])
+        .addTo(map);
+      markersRef.current.push(marker);
+    });
+  }, [mapLoaded, articles]);
+
+  const selectedArticles = selected ? articles.filter(a => fuzzyMatch(a.region)?.name === selected) : [];
 
   return (
     <div>
-      <h2 style={{ fontFamily:F.display, fontSize:22, fontWeight:700, color:C.text, margin:"0 0 4px", letterSpacing:"-0.02em" }}>News Heatmap</h2>
-      <p style={{ fontFamily:F.text, fontSize:14, color:C.muted, margin:"0 0 16px" }}>Tap a region to filter stories by location.</p>
-
-      <div style={{ position:"relative", borderRadius:16, overflow:"hidden", marginBottom:20, background:C.surface }}>
-        <svg viewBox="0 0 900 560" style={{ width:"100%", display:"block" }}>
-          <defs>
-            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#00000018"/>
-            </filter>
-          </defs>
-
-          {/* Ocean background */}
-          <rect width="900" height="560" fill="#F0F0F0"/>
-
-          {/* ── US STATE PATHS (accurate simplified outlines) ── */}
-          {/* Pacific Northwest */}
-          <path d="M 90,55 L 195,45 L 200,75 L 205,105 L 195,115 L 135,125 L 88,118 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* WA */}
-          <path d="M 88,118 L 195,115 L 200,185 L 190,210 L 88,215 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* OR */}
-          <path d="M 88,118 L 135,125 L 130,180 L 88,215 Z" fill="#C8DCF0" stroke="#fff" strokeWidth="1.2"/> {/* ID top */}
-          <path d="M 130,180 L 195,175 L 200,240 L 175,260 L 128,258 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* ID */}
-
-          {/* California */}
-          <path d="M 88,215 L 190,210 L 195,260 L 188,310 L 168,355 L 138,370 L 100,340 L 85,290 L 88,250 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/>
-
-          {/* Southwest */}
-          <path d="M 175,260 L 245,256 L 248,330 L 175,332 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* NV */}
-          <path d="M 245,256 L 315,252 L 318,330 L 248,330 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* UT */}
-          <path d="M 195,260 L 245,256 L 245,332 L 195,335 Z" fill="#C8DCF0" stroke="#fff" strokeWidth="1.2"/> {/* part */}
-          <path d="M 175,332 L 248,330 L 250,410 L 172,412 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* AZ */}
-          <path d="M 248,330 L 318,328 L 320,405 L 250,408 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* NM */}
-
-          {/* Mountain */}
-          <path d="M 315,190 L 390,186 L 394,255 L 318,258 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* MT south */}
-          <path d="M 195,115 L 315,108 L 318,190 L 200,195 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* MT */}
-          <path d="M 318,190 L 390,186 L 393,255 L 320,258 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* WY */}
-          <path d="M 318,256 L 393,252 L 396,320 L 320,323 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* CO */}
-
-          {/* Plains */}
-          <path d="M 390,118 L 468,112 L 472,188 L 393,192 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* ND */}
-          <path d="M 393,192 L 472,188 L 475,255 L 396,258 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* SD */}
-          <path d="M 396,258 L 475,254 L 478,310 L 398,313 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* NE */}
-          <path d="M 398,313 L 478,309 L 481,360 L 400,363 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* KS */}
-          <path d="M 320,323 L 398,319 L 400,363 L 322,367 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* OK */}
-
-          {/* Texas */}
-          <path d="M 322,367 L 480,360 L 485,432 L 452,468 L 388,480 L 330,455 L 305,420 L 310,390 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/>
-
-          {/* Midwest */}
-          <path d="M 468,112 L 548,108 L 552,155 L 470,158 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* MN */}
-          <path d="M 475,188 L 548,185 L 552,248 L 478,252 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* IA */}
-          <path d="M 478,248 L 552,244 L 556,302 L 480,306 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* MO */}
-          <path d="M 548,108 L 612,104 L 615,155 L 550,158 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* WI */}
-          <path d="M 552,155 L 612,150 L 616,210 L 554,214 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* MI lower */}
-          <path d="M 554,210 L 616,206 L 619,258 L 556,262 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* IL */}
-          <path d="M 556,258 L 618,254 L 621,308 L 558,312 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* IN-ish */}
-          <path d="M 618,210 L 670,206 L 674,262 L 620,266 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* OH */}
-          <path d="M 480,360 L 558,356 L 560,402 L 482,405 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* AR */}
-          <path d="M 558,356 L 620,352 L 622,395 L 560,398 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* TN-MS */}
-          <path d="M 482,405 L 558,400 L 560,450 L 520,462 L 485,448 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* LA */}
-
-          {/* Southeast */}
-          <path d="M 620,352 L 680,348 L 683,392 L 622,395 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* GA-AL */}
-          <path d="M 622,392 L 680,388 L 685,430 L 668,468 L 635,480 L 610,455 L 608,425 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* FL */}
-
-          {/* Mid-Atlantic & Northeast */}
-          <path d="M 670,262 L 725,258 L 728,305 L 672,308 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* WV-VA */}
-          <path d="M 672,305 L 728,300 L 732,340 L 675,344 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* NC */}
-          <path d="M 675,340 L 730,336 L 733,370 L 678,373 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* SC */}
-          <path d="M 678,370 L 732,366 L 735,395 L 680,398 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* GA */}
-          <path d="M 612,155 L 690,148 L 694,175 L 735,172 L 738,210 L 694,214 L 690,230 L 614,235 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* NY-PA */}
-          <path d="M 692,230 L 738,226 L 741,265 L 694,268 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* MD-DE-NJ */}
-          <path d="M 735,148 L 790,142 L 793,172 L 737,175 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* NE states */}
-          <path d="M 790,142 L 835,136 L 838,172 L 792,175 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1.2"/> {/* ME */}
-
-          {/* Great Lakes */}
-          <path d="M 548,148 L 612,142 L 615,102 L 580,95 L 548,108 Z" fill="#F0F0F0" stroke="#B8D0E8" strokeWidth="0.8" strokeDasharray="3,2"/> {/* Lake Superior */}
-          <path d="M 612,150 L 670,145 L 672,195 L 618,198 Z" fill="#F0F0F0" stroke="#B8D0E8" strokeWidth="0.8" strokeDasharray="3,2"/> {/* Lake Michigan */}
-          <path d="M 670,145 L 720,140 L 722,175 L 672,178 Z" fill="#F0F0F0" stroke="#B8D0E8" strokeWidth="0.8" strokeDasharray="3,2"/> {/* Lake Erie */}
-
-          {/* Alaska inset */}
-          <rect x="20" y="430" width="130" height="95" rx="6" fill="#F0F0F0" stroke="#B8CDE0" strokeWidth="1"/>
-          <path d="M 30,510 L 80,480 L 110,490 L 130,470 L 145,490 L 120,515 L 70,520 Z" fill="#D6E4F0" stroke="#fff" strokeWidth="1"/>
-          <text x="75" y="543" fontSize="9" fill={C.muted} textAnchor="middle" fontFamily="-apple-system,sans-serif" fontWeight="500">Alaska</text>
-
-          {/* Hawaii inset */}
-          <rect x="175" y="460" width="100" height="60" rx="6" fill="#F0F0F0" stroke="#B8CDE0" strokeWidth="1"/>
-          <ellipse cx="200" cy="488" rx="12" ry="7" fill="#D6E4F0" stroke="#fff" strokeWidth="1"/>
-          <ellipse cx="220" cy="483" rx="9" ry="6" fill="#D6E4F0" stroke="#fff" strokeWidth="1"/>
-          <ellipse cx="238" cy="487" rx="8" ry="5" fill="#D6E4F0" stroke="#fff" strokeWidth="1"/>
-          <ellipse cx="254" cy="490" rx="7" ry="5" fill="#D6E4F0" stroke="#fff" strokeWidth="1"/>
-          <text x="225" y="508" fontSize="9" fill={C.muted} textAnchor="middle" fontFamily="-apple-system,sans-serif" fontWeight="500">Hawaii</text>
-
-          {/* ── NEWS DOTS ── */}
-          {REGIONS.filter(r => r.name !== "National").map(r => {
-            const hasStories = r.count > 0;
-            const intensity = hasStories ? r.count / maxCount : 0;
-            const isHov = hov === r.name;
-
-            const lonToX = lon => ((lon - (-125)) / ((-66) - (-125))) * 900;
-            const latToY = lat => ((50 - lat) / (50 - 24)) * 500;
-            const x = lonToX(r.lon);
-            const y = latToY(r.lat);
-
-            return (
-              <g key={r.name} style={{ cursor:"pointer" }}
-                onClick={() => onRegion(r.name)}
-                onMouseEnter={() => setHov(r.name)}
-                onMouseLeave={() => setHov(null)}
-              >
-                {hasStories && <circle cx={x} cy={y} r={12 + intensity * 16} fill={C.blue} fillOpacity={0.18 + intensity * 0.12}/>}
-                <circle cx={x} cy={y} r={hasStories ? 8 : 4}
-                  fill={hasStories ? C.blue : "#9BBBCC"} fillOpacity={isHov ? 1 : 0.88}/>
-                <circle cx={x} cy={y} r={hasStories ? 8 : 4} fill="none" stroke="#fff" strokeWidth="2"/>
-                {(hasStories || isHov) && (
-                  <>
-                    <rect x={x-24} y={y-26} width={48} height={15} rx={4}
-                      fill={isHov ? C.text : C.blue} fillOpacity={0.93}/>
-                    <text x={x} y={y-15} fontSize="8" fill="#fff"
-                      textAnchor="middle" fontFamily="-apple-system,sans-serif" fontWeight="600">
-                      {r.abbr}{hasStories ? ` · ${r.count}` : ""}
-                    </text>
-                  </>
-                )}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Region list */}
-      {REGIONS.filter(r => r.count > 0).length === 0 ? (
-        <p style={{ fontFamily:F.text, fontSize:14, color:C.muted }}>Load stories to see regional coverage.</p>
-      ) : (
-        REGIONS.filter(r => r.count > 0)
-          .sort((a,b) => b.count - a.count)
-          .map(r => (
-            <div
-              key={r.name}
-              onClick={() => onRegion(r.name)}
-              style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 0", borderBottom:`1px solid ${C.divider}`, cursor:"pointer" }}
-            >
-              <span style={{ fontFamily:F.text, fontSize:14, color:C.text, fontWeight:500 }}>📍 {r.name}</span>
-              <span style={{ fontFamily:F.text, fontSize:13, color:C.accent }}>{r.count} {r.count===1?"story":"stories"} →</span>
+      <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>News Heatmap</h2>
+      <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:"0 0 14px"}}>Tap any city dot to see local stories.</p>
+      <div ref={mapRef} style={{width:"100%",height:320,borderRadius:20,overflow:"hidden",marginBottom:16,boxShadow:"0 4px 20px rgba(0,0,0,0.1)"}}/>
+      {!mapLoaded && <div style={{display:"flex",gap:10,alignItems:"center",justifyContent:"center",padding:"20px 0"}}><Spinner/><span style={{fontFamily:F.text,fontSize:13,color:C.muted}}>Loading map…</span></div>}
+      {selected && selectedArticles.length > 0 && (
+        <div style={{marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <p style={{fontFamily:F.display,fontSize:16,fontWeight:700,color:C.text,margin:0}}>📍 {selected}</p>
+            <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.muted}}>✕</button>
+          </div>
+          {selectedArticles.map((a,i)=>(
+            <div key={i} style={{...glass(0.7),borderRadius:14,padding:"12px 14px",marginBottom:8,cursor:"pointer"}} onClick={()=>onRegion&&onRegion(a)}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                <div style={{width:3,height:14,background:leanColor(a.lean),borderRadius:2,flexShrink:0}}/>
+                <span style={{fontFamily:F.text,fontSize:11,color:C.muted}}>{a.source}</span>
+              </div>
+              <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:0,lineHeight:1.4}}>{a.headline}</p>
             </div>
-          ))
+          ))}
+        </div>
+      )}
+      {Object.keys(cityCount).length === 0 && (
+        <p style={{fontFamily:F.text,fontSize:14,color:C.muted,textAlign:"center",padding:"20px 0"}}>Stories loading — map will populate shortly.</p>
       )}
     </div>
   );
