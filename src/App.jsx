@@ -1154,7 +1154,7 @@ export default function ClarionFinal() {
               fontSize: 34,
               fontWeight: 700,
               color: "#1a1a1a",
-              letterSpacing: "-0.5px",
+              letterSpacing: "-0.07em",
               display: "flex",
               alignItems: "baseline",
               userSelect: "none",
