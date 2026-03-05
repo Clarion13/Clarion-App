@@ -1331,7 +1331,6 @@ export default function ClarionFinal() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [balanceSnapshots, setBalanceSnapshots] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
-  const [breakingDismissed, setBreakingDismissed] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [compareStory, setCompareStory] = useState(null);
@@ -1470,7 +1469,6 @@ export default function ClarionFinal() {
   };
 
   // Detect breaking stories — any article flagged breaking that hasn't been dismissed
-  const breakingStory = !breakingDismissed && all.find(a => a.breaking);
 
   const loadBriefing=async()=>{
     setBriefingLoading(true);
@@ -1514,7 +1512,7 @@ export default function ClarionFinal() {
               fontFamily: "'Times New Roman', Times, serif",
               fontSize: 34,
               fontWeight: 700,
-              color: "#1a1a1a",
+              color: C.text,
               letterSpacing: "-0.07em",
               display: "flex",
               alignItems: "baseline",
@@ -1571,7 +1569,7 @@ export default function ClarionFinal() {
           {/* Search — icon that expands */}
           {showSearch && (
             <div style={{
-              ...glass(0.75),
+              background: C.card, border:`1px solid ${C.border}`,
               borderRadius: 16,
               display:"flex", alignItems:"center", gap:8,
               padding:"0 14px",
@@ -1612,8 +1610,8 @@ export default function ClarionFinal() {
             {/* Category pills — polished scrollable row */}
             <div style={{ position:"relative", margin:"12px -16px 8px" }}>
               {/* Soft fade on both edges */}
-              <div style={{ position:"absolute", left:0, top:0, bottom:0, width:24, zIndex:2, background:"linear-gradient(to right, #FFFFFF 40%, transparent)", pointerEvents:"none" }}/>
-              <div style={{ position:"absolute", right:0, top:0, bottom:0, width:24, zIndex:2, background:"linear-gradient(to left, #FFFFFF 40%, transparent)", pointerEvents:"none" }}/>
+              <div style={{ position:"absolute", left:0, top:0, bottom:0, width:24, zIndex:2, background:`linear-gradient(to right, ${C.bg} 40%, transparent)`, pointerEvents:"none" }}/>
+              <div style={{ position:"absolute", right:0, top:0, bottom:0, width:24, zIndex:2, background:`linear-gradient(to left, ${C.bg} 40%, transparent)`, pointerEvents:"none" }}/>
 
               <div style={{ display:"flex", gap:8, overflowX:"auto", padding:"6px 24px 10px", scrollbarWidth:"none" }}>
                 {CATS.map(c => (
@@ -1627,18 +1625,10 @@ export default function ClarionFinal() {
                     cursor: "pointer",
                     borderRadius: 980,
                     transition: "all 0.2s",
-                    border: category===c
-                      ? "1px solid rgba(0,0,0,0.13)"
-                      : "1px solid rgba(0,0,0,0.07)",
-                    background: category===c
-                      ? "rgba(255,255,255,0.96)"
-                      : "rgba(255,255,255,0.42)",
-                    backdropFilter: "blur(14px)",
-                    WebkitBackdropFilter: "blur(14px)",
+                    border: `1px solid ${category===c ? C.border : C.divider}`,
+                    background: category===c ? C.card : C.surface,
                     color: category===c ? C.text : C.muted,
-                    boxShadow: category===c
-                      ? "0 2px 14px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,1)"
-                      : "none",
+                    boxShadow: category===c ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
                   }}>
                     {c}
                   </button>
@@ -1648,9 +1638,8 @@ export default function ClarionFinal() {
                     flexShrink:0, padding:"8px 16px", fontSize:12,
                     fontFamily:F.text, fontWeight:500, whiteSpace:"nowrap",
                     cursor:"pointer", borderRadius:980,
-                    border:"1px solid rgba(0,0,0,0.08)",
-                    background:"rgba(255,255,255,0.6)",
-                    backdropFilter:"blur(14px)",
+                    border:`1px solid ${C.border}`,
+                    background:C.surface,
                     color:C.muted, boxShadow:"none",
                   }}>
                     📍 {regionFilter} ✕
@@ -1658,19 +1647,6 @@ export default function ClarionFinal() {
                 )}
               </div>
             </div>
-
-            {/* Breaking news banner */}
-            {breakingStory && (
-              <div style={{
-                background:C.breaking, borderRadius:12, padding:"10px 14px",
-                display:"flex", alignItems:"center", gap:10, marginBottom:12,
-                animation:"tab-pop 0.3s ease",
-              }}>
-                <span style={{fontSize:10,fontWeight:800,color:"#fff",background:"rgba(255,255,255,0.25)",borderRadius:4,padding:"2px 6px",flexShrink:0,letterSpacing:"0.05em"}}>BREAKING</span>
-                <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:"#fff",margin:0,flex:1,lineHeight:1.3}}>{breakingStory.headline.slice(0,80)}{breakingStory.headline.length>80?"…":""}</p>
-                <button onClick={()=>setBreakingDismissed(true)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.7)",cursor:"pointer",fontSize:16,flexShrink:0,lineHeight:1}}>✕</button>
-              </div>
-            )}
 
             {/* Search results view */}
             {searchResults !== null && (
@@ -1860,7 +1836,7 @@ export default function ClarionFinal() {
       {/* ── INSTAGRAM-STYLE BOTTOM NAV ── */}
       <div style={{
         position:"fixed", bottom:0, left:0, right:0, zIndex:200,
-        background: C.card,
+        background: C.bg,
         borderTop: `1px solid ${C.border}`,
         borderRadius:"20px 20px 0 0",
         boxShadow: "0 -2px 20px rgba(0,0,0,0.06)",
