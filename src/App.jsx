@@ -153,13 +153,14 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
 
         {/* Image */}
         {a.image ? (
-          <div style={{ height:imgH, flexShrink:0, overflow:"hidden" }}>
+          <div style={{ height:imgH, flexShrink:0, overflow:"hidden", background:C.surface }}>
             <img src={a.image} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
-              onError={e=>{ e.target.parentElement.style.background="rgba(123,175,212,0.1)"; e.target.style.display="none"; }}/>
+              onError={e=>{ e.target.style.display="none"; e.target.parentElement.setAttribute("data-fallback","1"); e.target.parentElement.style.display="flex"; e.target.parentElement.style.alignItems="center"; e.target.parentElement.style.justifyContent="center"; e.target.parentElement.style.background=`linear-gradient(135deg,${lc}18,${lc}08)`; e.target.parentElement.innerHTML=`<div style="text-align:center"><div style="font-size:${isGrid?22:30}px;font-weight:700;color:${lc};opacity:0.6;font-family:Times New Roman,serif">${(a.source||"?")[0].toUpperCase()}</div><div style="font-size:10px;color:${lc};opacity:0.5;font-family:sans-serif;margin-top:4px">${a.source||""}</div></div>`; }}/>
           </div>
         ) : (
-          <div style={{ height:imgH, flexShrink:0, background:"linear-gradient(135deg,rgba(123,175,212,0.12),rgba(232,149,109,0.12))", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <span style={{ fontSize: isGrid ? 24 : 32, opacity:0.2 }}>◎</span>
+          <div style={{ height:imgH, flexShrink:0, background:`linear-gradient(135deg,${lc}18,${lc}08)`, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:4 }}>
+            <div style={{ fontSize: isGrid ? 22 : 30, fontWeight:700, color:lc, opacity:0.6, fontFamily:"'Times New Roman',serif", lineHeight:1 }}>{(a.source||"?")[0].toUpperCase()}</div>
+            <div style={{ fontSize:10, color:lc, opacity:0.45, fontFamily:F.text }}>{a.source}</div>
           </div>
         )}
 
@@ -1027,6 +1028,147 @@ function PublishSheet({ onClose }) {
 // ─────────────────────────────────────────────────────────────────
 // APP
 // ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// ONBOARDING
+// ─────────────────────────────────────────────────────────────────
+const ONBOARDING_SLIDES = [
+  {
+    icon: "◎",
+    title: "Welcome to Clarion.",
+    body: "News from every angle — left, center, and right — in one feed. No echo chambers, no algorithms hiding the full picture.",
+    color: C.orange,
+  },
+  {
+    icon: "⚖",
+    title: "Know Your Bias",
+    body: "Clarion tracks which perspectives you read and shows your Balance Score over time. See when you're drifting into an echo chamber.",
+    color: C.left,
+  },
+  {
+    icon: "🧬",
+    title: "Trace Every Story",
+    body: "Use Story DNA to see who broke a story, how it spread, and where spin was introduced across the political spectrum.",
+    color: C.right,
+  },
+  {
+    icon: "★",
+    title: "Follow Topics",
+    body: "Pick the topics you care about most and Clarion will surface those stories first — while still keeping your feed balanced.",
+    color: C.accent,
+  },
+];
+
+function OnboardingScreen({ onDone }) {
+  const [slide, setSlide] = useState(0);
+  const s = ONBOARDING_SLIDES[slide];
+  const isLast = slide === ONBOARDING_SLIDES.length - 1;
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:9999,
+      background: C.bg,
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      padding:"40px 32px",
+    }}>
+      {/* Progress dots */}
+      <div style={{display:"flex", gap:6, marginBottom:48}}>
+        {ONBOARDING_SLIDES.map((_,i) => (
+          <div key={i} onClick={()=>setSlide(i)} style={{
+            width: i===slide ? 24 : 6, height:6, borderRadius:3,
+            background: i===slide ? s.color : C.border,
+            transition:"all 0.3s", cursor:"pointer",
+          }}/>
+        ))}
+      </div>
+
+      {/* Icon */}
+      <div style={{
+        width:96, height:96, borderRadius:28, marginBottom:32,
+        background: s.color+"15", border:`2px solid ${s.color}30`,
+        display:"flex", alignItems:"center", justifyContent:"center",
+        fontSize:40,
+      }}>{s.icon}</div>
+
+      {/* Text */}
+      <h1 style={{
+        fontFamily:"'Times New Roman', Times, serif",
+        fontSize:28, fontWeight:700, color:C.text,
+        textAlign:"center", margin:"0 0 16px",
+        letterSpacing:"-0.04em", lineHeight:1.2,
+      }}>{s.title}</h1>
+      <p style={{
+        fontFamily:F.text, fontSize:16, color:C.sub,
+        textAlign:"center", lineHeight:1.7, margin:"0 0 48px",
+        maxWidth:300,
+      }}>{s.body}</p>
+
+      {/* Buttons */}
+      <div style={{display:"flex", gap:12, width:"100%", maxWidth:300}}>
+        {!isLast && (
+          <button onClick={onDone} style={{
+            flex:1, padding:"14px", fontFamily:F.text, fontSize:14,
+            color:C.muted, background:"transparent", border:`1px solid ${C.border}`,
+            borderRadius:14, cursor:"pointer",
+          }}>Skip</button>
+        )}
+        <button onClick={()=>isLast ? onDone() : setSlide(s=>s+1)} style={{
+          flex:2, padding:"14px", fontFamily:F.text, fontSize:15, fontWeight:600,
+          color:"#fff", background:s.color, border:"none",
+          borderRadius:14, cursor:"pointer",
+          boxShadow:`0 4px 16px ${s.color}40`,
+        }}>{isLast ? "Start Reading" : "Next"}</button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// BALANCE HISTORY CHART (sparkline of reading lean over sessions)
+// ─────────────────────────────────────────────────────────────────
+function BalanceHistoryChart({ snapshots }) {
+  if (!snapshots || snapshots.length < 2) return (
+    <div style={{...card(), borderRadius:14, padding:"16px", marginBottom:20, textAlign:"center"}}>
+      <p style={{fontFamily:F.text, fontSize:13, color:C.muted, margin:0}}>Read more stories to see your balance trend over time.</p>
+    </div>
+  );
+  const W = 300, H = 80, PAD = 16;
+  const pts = snapshots.slice(-20); // last 20 readings
+  const iW = W - PAD*2, iH = H - PAD*2;
+  const points = pts.map((v, i) => {
+    const x = PAD + (i / (pts.length-1)) * iW;
+    const y = PAD + iH - ((v + 1) / 2) * iH; // v is -1(left) to +1(right), center=0
+    return [x, y];
+  });
+  const polyline = points.map(p => p.join(",")).join(" ");
+  const area = `M${points[0][0]},${H} ` + points.map(p=>`L${p[0]},${p[1]}`).join(" ") + ` L${points[points.length-1][0]},${H} Z`;
+  const last = pts[pts.length-1];
+  const trend = last > 0.2 ? "right" : last < -0.2 ? "left" : "center";
+  const trendColor = leanColor(trend);
+  return (
+    <div style={{...card(), borderRadius:14, padding:"16px", marginBottom:20}}>
+      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12}}>
+        <p style={{fontFamily:F.text, fontSize:12, fontWeight:600, color:C.muted, margin:0, letterSpacing:"0.05em", textTransform:"uppercase"}}>Balance Trend</p>
+        <span style={{fontSize:11, fontWeight:600, color:trendColor, background:trendColor+"18", borderRadius:20, padding:"2px 8px", fontFamily:F.text}}>
+          {trend === "left" ? "◀ Leaning Left" : trend === "right" ? "▶ Leaning Right" : "● Balanced"}
+        </span>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block", overflow:"visible"}}>
+        {/* Center line */}
+        <line x1={PAD} y1={H/2} x2={W-PAD} y2={H/2} stroke={C.divider} strokeWidth="1" strokeDasharray="3,3"/>
+        {/* Labels */}
+        <text x={PAD} y={PAD+4} fontSize="8" fill={C.left} fontFamily={F.text} fontWeight="600">LEFT</text>
+        <text x={PAD} y={H-PAD+10} fontSize="8" fill={C.right} fontFamily={F.text} fontWeight="600">RIGHT</text>
+        {/* Area fill */}
+        <path d={area} fill={trendColor} opacity="0.08"/>
+        {/* Line */}
+        <polyline points={polyline} fill="none" stroke={trendColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        {/* End dot */}
+        <circle cx={points[points.length-1][0]} cy={points[points.length-1][1]} r="4" fill={trendColor}/>
+      </svg>
+      <p style={{fontFamily:F.text, fontSize:11, color:C.muted, margin:"8px 0 0"}}>Based on your last {pts.length} articles read</p>
+    </div>
+  );
+}
+
 export default function ClarionFinal() {
   const [tab,setTab]=useState("feed");
   const [category,setCategory]=useState("All");
@@ -1043,16 +1185,36 @@ export default function ClarionFinal() {
   const [briefing,setBriefing]=useState(null);
   const [briefingLoading,setBriefingLoading]=useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [followedTopics, setFollowedTopics] = useState(["Politics","Tech","World"]);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [balanceSnapshots, setBalanceSnapshots] = useState([]);
 
   const all=[...aiArticles,...ARTICLES];
-  const feed=all.filter(a=>{
+
+  // Sort: followed topics float to top, then rest
+  const sortedAll = followedTopics.length > 0
+    ? [...all.filter(a => followedTopics.includes(a.category)), ...all.filter(a => !followedTopics.includes(a.category))]
+    : all;
+
+  const feed=sortedAll.filter(a=>{
     if(category!=="All"&&a.category!==category) return false;
     if(search&&!a.headline.toLowerCase().includes(search.toLowerCase())&&!a.source.toLowerCase().includes(search.toLowerCase())) return false;
     if(regionFilter&&a.region!==regionFilter) return false;
     return true;
   });
 
-  const onRead=id=>setHistory(v=>v.includes(id)?v:[...v,id]);
+  const onRead=id=>{
+    setHistory(v=>v.includes(id)?v:[...v,id]);
+    // Snapshot balance score for trend chart
+    const art = all.find(a=>a.id===id);
+    if (art) {
+      setBalanceSnapshots(prev => {
+        const score = art.lean==="left" ? -1 : art.lean==="right" ? 1 : 0;
+        return [...prev, score].slice(-40); // keep last 40
+      });
+    }
+  };
 
   const loadAI = async () => {
     setAiLoading(true);
@@ -1109,10 +1271,25 @@ export default function ClarionFinal() {
     } catch (e) {
       console.error("loadAI failed:", e);
     }
+    setLastUpdated(new Date());
     setAiLoading(false);
   };
 
   useEffect(()=>{ loadAI(); },[]);
+
+  // Human-readable "last updated" string
+  const lastUpdatedLabel = lastUpdated ? (() => {
+    const mins = Math.floor((Date.now() - lastUpdated.getTime()) / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    return `${Math.floor(mins/60)}h ago`;
+  })() : null;
+
+  // Refresh countdown (re-render every 30s to keep label fresh)
+  useEffect(()=>{
+    const t = setInterval(()=>setLastUpdated(v=>v?new Date(v):v), 30000);
+    return ()=>clearInterval(t);
+  },[]);
 
   const loadBriefing=async()=>{
     setBriefingLoading(true);
@@ -1136,6 +1313,8 @@ export default function ClarionFinal() {
         ::-webkit-scrollbar { display: none; }
       `}</style>
 
+      {showOnboarding && <OnboardingScreen onDone={()=>setShowOnboarding(false)}/>}
+
       {verifying  && <FactSheet article={verifying} onClose={()=>setVerifying(null)}/>}
       {showWrite  && <PublishSheet onClose={()=>setShowWrite(false)}/>}
       {journalist && <JournalistSheet source={journalist} onClose={()=>setJournalist(null)}/>}
@@ -1147,7 +1326,7 @@ export default function ClarionFinal() {
         borderBottom: `1px solid ${C.border}`,
       }}>
         <div style={{maxWidth:640, margin:"0 auto", padding:"16px 20px 12px"}}>
-          <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12}}>
+          <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6}}>
             {/* Logo text */}
             <div style={{
               fontFamily: "'Times New Roman', Times, serif",
@@ -1188,6 +1367,18 @@ export default function ClarionFinal() {
             </button>
             </div>
           </div>
+
+          {/* Last updated indicator */}
+          {lastUpdatedLabel && (
+            <div style={{display:"flex", alignItems:"center", gap:5, marginBottom:8}}>
+              <div style={{width:6, height:6, borderRadius:"50%", background: aiLoading ? C.muted : "#5CB87A", flexShrink:0,
+                animation: aiLoading ? "none" : "pulse-dot 2s ease-in-out infinite"}}/>
+              <span style={{fontFamily:F.text, fontSize:11, color:C.muted}}>
+                {aiLoading ? "Refreshing…" : `Updated ${lastUpdatedLabel}`}
+              </span>
+              <style>{`@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
+            </div>
+          )}
 
           {/* Search — icon that expands */}
           {showSearch && (
@@ -1318,17 +1509,52 @@ export default function ClarionFinal() {
 
         {tab==="balance" && (
           <div style={{paddingTop:20}}>
+            <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>Balance</h2>
+            <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:"0 0 20px",lineHeight:1.5}}>Track your reading diet and stay informed across the spectrum.</p>
+
             <BiasGauge history={history} allArticles={all}/>
+
+            {/* Balance trend chart */}
+            <BalanceHistoryChart snapshots={balanceSnapshots}/>
+
+            {/* Topic following */}
+            <div style={{marginBottom:24}}>
+              <h3 style={{fontFamily:F.display,fontSize:17,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Your Topics</h3>
+              <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 12px"}}>Followed topics appear first in your feed.</p>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {CATS.filter(c=>c!=="All").map(cat=>{
+                  const active = followedTopics.includes(cat);
+                  return (
+                    <button key={cat} onClick={()=>setFollowedTopics(v=>active?v.filter(x=>x!==cat):[...v,cat])}
+                      style={{
+                        padding:"8px 14px", fontSize:13, fontWeight:active?600:400,
+                        fontFamily:F.text, borderRadius:20, cursor:"pointer",
+                        background: active ? C.orange : C.surface,
+                        color: active ? "#fff" : C.sub,
+                        border: `1px solid ${active ? C.orange : C.border}`,
+                        transition:"all 0.15s",
+                      }}>
+                      {active ? "✓ " : ""}{cat}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Suggested for balance */}
             {history.length>0&&(
               <>
-                <h3 style={{fontFamily:F.display,fontSize:18,fontWeight:600,color:C.text,margin:"32px 0 4px",letterSpacing:"-0.01em"}}>Suggested for Balance</h3>
-                <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 16px"}}>Stories you haven't read yet.</p>
+                <h3 style={{fontFamily:F.display,fontSize:17,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Suggested for Balance</h3>
+                <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 16px"}}>Stories from perspectives you haven't read yet.</p>
                 {all.filter(a=>!history.includes(a.id)).slice(0,5).map(a=>(
-                  <div key={a.id} onClick={()=>onRead(a.id)} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:`1px solid ${C.divider}`,cursor:"pointer",alignItems:"flex-start"}}>
-                    <span style={{fontSize:11,color:leanColor(a.lean),fontWeight:600,fontFamily:F.text,paddingTop:2,flexShrink:0}}>{a.lean}</span>
-                    <div>
+                  <div key={a.id} onClick={()=>{ onRead(a.id); setTab("feed"); }} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:`1px solid ${C.divider}`,cursor:"pointer",alignItems:"flex-start"}}>
+                    <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:leanColor(a.lean),flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
                       <p style={{fontFamily:F.text,fontSize:14,color:C.text,fontWeight:500,margin:"0 0 3px",lineHeight:1.35}}>{a.headline}</p>
-                      <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{a.source}</p>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{a.source}</p>
+                        <span style={{fontSize:10,color:leanColor(a.lean),fontWeight:600,background:leanColor(a.lean)+"18",borderRadius:10,padding:"1px 6px",fontFamily:F.text}}>{a.lean}</span>
+                      </div>
                     </div>
                   </div>
                 ))}
