@@ -228,13 +228,13 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
                 ...glassBtn(false), padding:"7px 14px", fontSize:12, fontWeight:600,
               }}>Read ↗</button>
             )}
-            <button onClick={()=>setBookmarks(v=>saved?v.filter(x=>x!==a.id):[...v,a.id])} style={{
+            <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(saved?6:14); setBookmarks(v=>saved?v.filter(x=>x!==a.id):[...v,a.id]); }} style={{
               ...glassBtn(saved), padding:"7px 12px", fontSize:12,
             }}>{saved?"★ Saved":"☆ Save"}</button>
             <button onClick={()=>setVerifying(a)} style={{
               ...glassBtn(false), padding:"7px 12px", fontSize:12,
             }}>Fact Check</button>
-            {onCompare && <button onClick={e=>{e.stopPropagation();onCompare(a);}} style={{
+            {onCompare && <button onClick={e=>{ e.stopPropagation(); if(navigator.vibrate) navigator.vibrate(10); onCompare(a); }} style={{
               ...glassBtn(false), padding:"7px 12px", fontSize:12,
             }}>⚖ Compare</button>}
           </div>
@@ -671,7 +671,7 @@ function HeatMap({ articles, onRegion }) {
     });
 
     // ── CLICK HANDLERS ──
-    map.on("click", "clarion-dots", (e) => {
+    map.on("click", "clarion-dots", (e) => { if(navigator.vibrate) navigator.vibrate(8);
       const name = e.features[0]?.properties?.name;
       if (name) {
         setSelected({ type:"city", name });
@@ -995,7 +995,7 @@ function DNATree({ articles }) {
                     const dt = (n.date||"").slice(0,10);
 
                     return (
-                      <g key={item.id} onClick={()=>setSelectedId(isSel?null:item.id)} style={{cursor:"pointer"}}>
+                      <g key={item.id} onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setSelectedId(isSel?null:item.id); }} style={{cursor:"pointer"}}>
                         {/* Selection halo */}
                         {isSel && <rect x={nx-3} y={ny-3} width={NODE_W+6} height={NODE_H+6} rx={isSel?16:14} fill={nc} opacity={0.12}/>}
 
@@ -1547,6 +1547,45 @@ class ErrorBoundary extends Component {
   }
 }
 
+// ── SKELETON LOADER ──
+function SkeletonCard({ isLead=false }) {
+  const shimmer = {
+    background: `linear-gradient(90deg, ${C.surface} 25%, ${C.divider} 50%, ${C.surface} 75%)`,
+    backgroundSize:"800px 100%",
+    animation:"shimmer 1.4s ease-in-out infinite",
+    borderRadius:8,
+  };
+  return (
+    <div style={{borderRadius:18, overflow:"hidden", background:C.card, border:`1px solid ${C.border}`}}>
+      <div style={{...shimmer, height: isLead ? 220 : 130, borderRadius:0}}/>
+      <div style={{padding:"12px 14px 14px"}}>
+        <div style={{...shimmer, height:10, width:"40%", marginBottom:10}}/>
+        <div style={{...shimmer, height:14, width:"95%", marginBottom:7}}/>
+        <div style={{...shimmer, height:14, width:"80%", marginBottom: isLead?7:0}}/>
+        {isLead && <div style={{...shimmer, height:14, width:"60%"}}/>}
+      </div>
+    </div>
+  );
+}
+
+function SkeletonFeed() {
+  return (
+    <div style={{padding:"0 0 20px"}}>
+      {/* Carousel skeleton */}
+      <div style={{margin:"4px -16px 20px", padding:"0 16px"}}>
+        <SkeletonCard isLead={true}/>
+      </div>
+      {/* Grid skeleton */}
+      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10}}>
+        <SkeletonCard/><SkeletonCard/>
+      </div>
+      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
+        <SkeletonCard/><SkeletonCard/>
+      </div>
+    </div>
+  );
+}
+
 // Scroll-tracking dots for the carousel
 function CarouselDots({ items, carouselId }) {
   const [active, setActive] = useState(0);
@@ -1598,6 +1637,17 @@ function ClarionFinal() {
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [compareStory, setCompareStory] = useState(null);
+  const [prevTab, setPrevTab] = useState(null);
+  const [tabTransition, setTabTransition] = useState(false);
+
+  const switchTab = (newTab) => {
+    if (newTab === tab) return;
+    // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate(8);
+    setPrevTab(tab);
+    setTabTransition(true);
+    setTimeout(() => { setTab(newTab); setTabTransition(false); }, 120);
+  };
 
   // Wire C to darkMode — mutate in place so all components see the update
   const theme = darkMode ? DARK : LIGHT;
@@ -1625,11 +1675,15 @@ function ClarionFinal() {
   });
 
   const onRead=id=>{
+    haptic(6);
     setHistory(v=>v.includes(id)?v:[...v,id]);
   };
 
+  // ── HAPTIC HELPER ──
+  const haptic = (pattern = 8) => { if (navigator.vibrate) navigator.vibrate(pattern); };
+
   const CACHE_KEY = "clarion_feed_v3";
-  const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+  const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
   const loadAI = async (forceRefresh = false) => {
     // ── CACHE CHECK — serve instantly if fresh ──
@@ -1782,6 +1836,10 @@ function ClarionFinal() {
       <style>{`
         @keyframes clarion-spin { to { transform: rotate(360deg); } }
         @keyframes tab-pop { 0% { transform: scale(0.85); opacity:0.5; } 100% { transform: scale(1); opacity:1; } }
+        @keyframes tab-in  { 0% { opacity:0; transform:translateY(10px); } 100% { opacity:1; transform:translateY(0); } }
+        @keyframes tab-out { 0% { opacity:1; transform:translateY(0); }   100% { opacity:0; transform:translateY(-8px); } }
+        @keyframes shimmer { 0% { background-position:-400px 0; } 100% { background-position:400px 0; } }
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; margin: 0; padding: 0; }
         html, body, #root { margin: 0; padding: 0; background: ${C.bg}; }
         ::-webkit-scrollbar { display: none; }
@@ -1800,66 +1858,53 @@ function ClarionFinal() {
         background: C.bg,
         borderBottom: `1px solid ${C.border}`,
       }}>
-        <div style={{maxWidth:640, margin:"0 auto", padding:"16px 20px 12px"}}>
-          <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6}}>
-            {/* Logo text */}
+        <div style={{maxWidth:640, margin:"0 auto", padding:"12px 20px 10px"}}>
+          <div style={{display:"flex", alignItems:"center", justifyContent:"space-between"}}>
+            {/* Logo */}
             <div style={{
-              fontFamily: "'Times New Roman', Times, serif",
-              fontSize: 34,
-              fontWeight: 700,
-              color: C.text,
-              letterSpacing: "-0.07em",
-              display: "flex",
-              alignItems: "baseline",
-              userSelect: "none",
-              lineHeight: 1,
+              fontFamily:"'Times New Roman',Times,serif",
+              fontSize:30, fontWeight:700, color:C.text,
+              letterSpacing:"-0.07em", lineHeight:1, userSelect:"none",
+              display:"flex", alignItems:"baseline",
             }}>
-              <span>Clar</span><span style={{ fontStyle: "italic" }}>i</span><span>on.</span>
+              <span>Clar</span><span style={{fontStyle:"italic"}}>i</span><span>on.</span>
             </div>
-            {/* Search icon + Refresh */}
-            <div style={{display:"flex", gap:8, alignItems:"center"}}>
+            {/* Right icons — search, dark mode, refresh only */}
+            <div style={{display:"flex", gap:6, alignItems:"center"}}>
+              {/* Live dot + search */}
+              <div style={{display:"flex", alignItems:"center", gap:6, marginRight:2}}>
+                {lastUpdatedLabel && !aiLoading && (
+                  <div style={{width:6,height:6,borderRadius:"50%",background:"#5CB87A",
+                    animation:"pulse-dot 2s ease-in-out infinite", flexShrink:0}}/>
+                )}
+                {aiLoading && <div style={{width:14,height:14}}><Spinner size={14}/></div>}
+              </div>
               <button onClick={()=>setShowSearch(v=>!v)} style={{
-                width:36, height:36, borderRadius:980,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                background:C.surface, border:`1px solid ${C.border}`,
-                cursor:"pointer", flexShrink:0, transition:"all 0.2s",
+                width:34,height:34,borderRadius:980,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                background:"none", border:"none", cursor:"pointer",
               }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showSearch ? C.text : C.muted} strokeWidth="2" strokeLinecap="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={showSearch?C.text:C.muted} strokeWidth="2" strokeLinecap="round">
                   <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
                 </svg>
               </button>
               <button onClick={()=>setDarkMode(v=>!v)} style={{
-                width:36, height:36, borderRadius:980,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                background:C.surface, border:`1px solid ${C.border}`,
-                cursor:"pointer", flexShrink:0, fontSize:16,
-              }}>{darkMode ? "☀️" : "🌙"}</button>
-              <button onClick={()=>loadAI(true)} disabled={aiLoading} style={{
-              background: "#E8956D",
-              border:"none", borderRadius:980,
-              padding:"8px 18px", fontSize:12, fontWeight:600,
-              color:"#fff", cursor:"pointer", fontFamily:F.text,
-              boxShadow:"0 2px 10px rgba(232,149,109,0.45)",
-              opacity: aiLoading ? 0.6 : 1,
-              transition:"all 0.2s",
-              letterSpacing:"0.01em",
-            }}>
-              {aiLoading ? "Loading…" : "↻ Refresh"}
-            </button>
+                width:34,height:34,borderRadius:980,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                background:"none",border:"none",cursor:"pointer",fontSize:16,
+              }}>{darkMode?"☀️":"🌙"}</button>
+              <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); loadAI(true); }} disabled={aiLoading} style={{
+                width:34,height:34,borderRadius:980,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                background:C.orange,border:"none",cursor:"pointer",
+                opacity:aiLoading?0.5:1,transition:"opacity 0.2s",
+              }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M1 4v6h6M23 20v-6h-6"/><path d="M3.51 9a9 9 0 0114.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0020.49 15"/>
+                </svg>
+              </button>
             </div>
           </div>
-
-          {/* Last updated indicator */}
-          {lastUpdatedLabel && (
-            <div style={{display:"flex", alignItems:"center", gap:5, marginBottom:8}}>
-              <div style={{width:6, height:6, borderRadius:"50%", background: aiLoading ? C.muted : "#5CB87A", flexShrink:0,
-                animation: aiLoading ? "none" : "pulse-dot 2s ease-in-out infinite"}}/>
-              <span style={{fontFamily:F.text, fontSize:11, color:C.muted}}>
-                {aiLoading ? "Refreshing…" : `Updated ${lastUpdatedLabel}`}
-              </span>
-              <style>{`@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
-            </div>
-          )}
 
           {/* Search — icon that expands */}
           {showSearch && (
@@ -1897,7 +1942,10 @@ function ClarionFinal() {
       </div>
 
       {/* ── BODY ── */}
-      <div style={{maxWidth:640, margin:"0 auto", padding:"8px 16px 120px"}}>
+      <div style={{
+        maxWidth:640, margin:"0 auto", padding:"8px 16px 120px",
+        animation: tabTransition ? "tab-out 0.12s ease forwards" : "tab-in 0.18s ease forwards",
+      }}>
 
         {/* FEED */}
         {tab==="feed" && (
@@ -1960,10 +2008,7 @@ function ClarionFinal() {
             )}
 
             {searchResults === null && feed.length===0 && (
-              <div style={{display:"flex", gap:12, alignItems:"center", justifyContent:"center", padding:"60px 0"}}>
-                <Spinner/>
-                <p style={{fontFamily:F.text, fontSize:14, color:C.muted, margin:0}}>Loading live stories…</p>
-              </div>
+              <SkeletonFeed/>
             )}
 
             {searchResults === null && feed.length > 0 && (() => {
@@ -2436,40 +2481,34 @@ function ClarionFinal() {
             return (
               <button
                 key={n.id}
-                onClick={() => setTab(n.id)}
+                onClick={() => switchTab(n.id)}
                 style={{
-                  display:"flex", flexDirection:"column", alignItems:"center", gap:3,
+                  display:"flex", flexDirection:"column", alignItems:"center", gap:4,
                   background:"none", border:"none", cursor:"pointer",
-                  padding:"6px 8px", borderRadius:16,
-                  transition:"all 0.2s",
-                  animation: active ? "tab-pop 0.2s ease" : "none",
+                  padding:"4px 6px", borderRadius:14,
+                  transition:"all 0.18s",
+                  minWidth:44,
                 }}
               >
-                {/* Icon bubble */}
                 <div style={{
-                  width:40, height:30,
-                  borderRadius:10,
+                  width:44, height:32,
+                  borderRadius:11,
                   display:"flex", alignItems:"center", justifyContent:"center",
-                  transition:"all 0.2s",
-                  ...(active ? {
-                    background: C.accentSoft,
-                    border: "1px solid rgba(0,0,0,0.12)",
-                  } : {
-                    background:"transparent",
-                    border: "1px solid transparent",
-                  }),
+                  transition:"all 0.18s",
+                  background: active ? C.accentSoft : "transparent",
+                  transform: active ? "scale(1.08)" : "scale(1)",
                 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke={active ? C.text : C.muted} strokeWidth="1.7"
-                    style={{ transition:"all 0.2s" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke={active ? C.orange : C.muted} strokeWidth="1.7"
+                    style={{transition:"all 0.18s"}}>
                     {n.svg}
                   </svg>
                 </div>
                 <span style={{
-                  fontFamily:F.text, fontSize:9, fontWeight: active ? 600 : 400,
+                  fontFamily:F.text, fontSize:10, fontWeight: active ? 700 : 400,
                   color: active ? C.text : C.muted,
-                  letterSpacing:"0.02em",
-                  transition:"all 0.2s",
+                  letterSpacing:"0.01em",
+                  transition:"all 0.18s",
                 }}>
                   {n.label}
                 </span>
