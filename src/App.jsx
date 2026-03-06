@@ -1,4 +1,9 @@
 import { useState, useEffect, useRef, Component } from "react";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPA_URL = "https://qizqfeibqfqvfdzvqtin.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpenFmZWlicWZxdmZkenZxdGluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjQ3MzcsImV4cCI6MjA4ODQwMDczN30.oBiHaOZYbNi6-PyoAFeE_eUoaPoesCB1TOrKK9Qr4TM";
+const supabase = createClient(SUPA_URL, SUPA_KEY);
 
 // ── PASTEL GREEN + CREAM — SOLID PROFESSIONAL ────────────────────
 const LIGHT = {
@@ -149,7 +154,7 @@ function TrustMeter({ score, size=72 }) {
 // ─────────────────────────────────────────────────────────────────
 // ARTICLE CARD
 // ─────────────────────────────────────────────────────────────────
-function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJournalist, isLead, isGrid, onCompare }) {
+function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJournalist, isLead, isGrid, onCompare, onBookmarkSync }) {
   const [open, setOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
@@ -228,7 +233,7 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
                 ...glassBtn(false), padding:"7px 14px", fontSize:12, fontWeight:600,
               }}>Read ↗</button>
             )}
-            <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(saved?6:14); setBookmarks(v=>saved?v.filter(x=>x!==a.id):[...v,a.id]); }} style={{
+            <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(saved?6:14); const adding=!saved; setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a, adding); }} style={{
               ...glassBtn(saved), padding:"7px 12px", fontSize:12,
             }}>{saved?"★ Saved":"☆ Save"}</button>
             <button onClick={()=>setVerifying(a)} style={{
@@ -1507,6 +1512,140 @@ Return ONLY valid JSON:
 }
 
 // ─────────────────────────────────────────────────────────────────
+// AUTH MODAL — Sign up / Sign in
+// ─────────────────────────────────────────────────────────────────
+function AuthModal({ onClose, onAuth }) {
+  const [mode, setMode] = useState("signin"); // "signin" | "signup"
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  const submit = async () => {
+    setError(null); setSuccess(null);
+    if (!email || !password) { setError("Please fill in all fields."); return; }
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { data, error: e } = await supabase.auth.signUp({
+          email, password,
+          options: { data: { display_name: name || email.split("@")[0] } }
+        });
+        if (e) throw e;
+        if (data.user && !data.session) {
+          setSuccess("Check your email to confirm your account, then sign in.");
+        } else if (data.session) {
+          onAuth(data.user);
+          onClose();
+        }
+      } else {
+        const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
+        if (e) throw e;
+        onAuth(data.user);
+        onClose();
+      }
+    } catch(e) {
+      setError(e.message || "Something went wrong.");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:9000,
+      background:"rgba(0,0,0,0.55)", backdropFilter:"blur(6px)",
+      display:"flex", alignItems:"flex-end", justifyContent:"center",
+    }} onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div style={{
+        width:"100%", maxWidth:480,
+        background:C.card, borderRadius:"24px 24px 0 0",
+        padding:"28px 24px 40px",
+        animation:"tab-in 0.25s ease",
+      }}>
+        {/* Handle bar */}
+        <div style={{width:36,height:4,borderRadius:2,background:C.divider,margin:"0 auto 24px"}}/>
+
+        {/* Logo */}
+        <div style={{textAlign:"center", marginBottom:24}}>
+          <div style={{fontFamily:"'Times New Roman',Times,serif", fontSize:32, fontWeight:700,
+            color:C.text, letterSpacing:"-0.07em"}}>
+            Clar<span style={{fontStyle:"italic"}}>i</span>on.
+          </div>
+          <p style={{fontFamily:F.text, fontSize:13, color:C.muted, margin:"4px 0 0"}}>
+            {mode==="signup" ? "Create your account" : "Welcome back"}
+          </p>
+        </div>
+
+        {/* Mode toggle */}
+        <div style={{display:"flex", background:C.surface, borderRadius:12, padding:3, marginBottom:20}}>
+          {["signin","signup"].map(m => (
+            <button key={m} onClick={()=>{ setMode(m); setError(null); setSuccess(null); }} style={{
+              flex:1, padding:"9px 0", borderRadius:10, border:"none", cursor:"pointer",
+              fontFamily:F.text, fontSize:13, fontWeight: mode===m ? 600 : 400,
+              background: mode===m ? C.card : "transparent",
+              color: mode===m ? C.text : C.muted,
+              boxShadow: mode===m ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+              transition:"all 0.18s",
+            }}>
+              {m==="signin" ? "Sign In" : "Create Account"}
+            </button>
+          ))}
+        </div>
+
+        {/* Fields */}
+        {mode==="signup" && (
+          <div style={{marginBottom:12}}>
+            <input value={name} onChange={e=>setName(e.target.value)}
+              placeholder="Your name (optional)"
+              style={{width:"100%", padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`,
+                background:C.surface, color:C.text, fontFamily:F.text, fontSize:14,
+                outline:"none", boxSizing:"border-box"}}/>
+          </div>
+        )}
+        <div style={{marginBottom:12}}>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
+            placeholder="Email address"
+            onKeyDown={e=>e.key==="Enter"&&submit()}
+            style={{width:"100%", padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`,
+              background:C.surface, color:C.text, fontFamily:F.text, fontSize:14,
+              outline:"none", boxSizing:"border-box"}}/>
+        </div>
+        <div style={{marginBottom:20}}>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
+            placeholder="Password"
+            onKeyDown={e=>e.key==="Enter"&&submit()}
+            style={{width:"100%", padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`,
+              background:C.surface, color:C.text, fontFamily:F.text, fontSize:14,
+              outline:"none", boxSizing:"border-box"}}/>
+        </div>
+
+        {error && <p style={{fontFamily:F.text, fontSize:13, color:C.right, margin:"0 0 14px", textAlign:"center"}}>{error}</p>}
+        {success && <p style={{fontFamily:F.text, fontSize:13, color:"#5CB87A", margin:"0 0 14px", textAlign:"center", lineHeight:1.5}}>{success}</p>}
+
+        <button onClick={submit} disabled={loading} style={{
+          width:"100%", padding:"14px", borderRadius:12, border:"none",
+          background: loading ? C.muted : C.orange,
+          color:"#fff", fontFamily:F.text, fontSize:15, fontWeight:700,
+          cursor: loading ? "default" : "pointer",
+          transition:"all 0.2s",
+          boxShadow:"0 3px 12px rgba(232,149,109,0.35)",
+        }}>
+          {loading ? "Please wait…" : mode==="signin" ? "Sign In" : "Create Account"}
+        </button>
+
+        <button onClick={onClose} style={{
+          width:"100%", padding:"12px", marginTop:10, borderRadius:12, border:"none",
+          background:"transparent", color:C.muted, fontFamily:F.text, fontSize:14, cursor:"pointer",
+        }}>Maybe later</button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
 // ERROR BOUNDARY — catches Claude/fetch failures gracefully
 // ─────────────────────────────────────────────────────────────────
 class ErrorBoundary extends Component {
@@ -1639,6 +1778,9 @@ function ClarionFinal() {
   const [compareStory, setCompareStory] = useState(null);
   const [prevTab, setPrevTab] = useState(null);
   const [tabTransition, setTabTransition] = useState(false);
+  const [user, setUser] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const [userPrefsLoaded, setUserPrefsLoaded] = useState(false);
 
   const switchTab = (newTab) => {
     if (newTab === tab) return;
@@ -1674,13 +1816,114 @@ function ClarionFinal() {
     return true;
   });
 
-  const onRead=id=>{
+  const onRead=(id, article=null)=>{
     haptic(6);
     setHistory(v=>v.includes(id)?v:[...v,id]);
+    if (article) syncRead(article);
   };
 
   // ── HAPTIC HELPER ──
   const haptic = (pattern = 8) => { if (navigator.vibrate) navigator.vibrate(pattern); };
+
+  // ── AUTH: listen for session changes ──
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUser(session.user);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ── LOAD user prefs + bookmarks from Supabase when user logs in ──
+  useEffect(() => {
+    if (!user) return;
+    const loadUserData = async () => {
+      // Preferences
+      const { data: prefs } = await supabase
+        .from("user_preferences").select("*").eq("user_id", user.id).single();
+      if (prefs) {
+        setDarkMode(prefs.dark_mode ?? false);
+        setFollowedTopics(prefs.followed_topics ?? ["Politics","Tech","World"]);
+      } else {
+        // Create default prefs row
+        await supabase.from("user_preferences").insert({
+          user_id: user.id, dark_mode: false,
+          followed_topics: ["Politics","Tech","World"],
+        });
+      }
+      // Bookmarks
+      const { data: bms } = await supabase
+        .from("bookmarks").select("article_id, article_data").eq("user_id", user.id);
+      if (bms?.length) {
+        setBookmarks(bms.map(b => b.article_id));
+        // Merge bookmark article data into aiArticles if not already present
+        const bmArticles = bms.map(b => b.article_data).filter(Boolean);
+        setAiArticles(prev => {
+          const ids = new Set(prev.map(a => String(a.id)));
+          const newOnes = bmArticles.filter(a => !ids.has(String(a.id)));
+          return [...prev, ...newOnes];
+        });
+      }
+      // Reading history
+      const { data: hist } = await supabase
+        .from("reading_history").select("article_id").eq("user_id", user.id);
+      if (hist?.length) setHistory(hist.map(h => h.article_id));
+      setUserPrefsLoaded(true);
+    };
+    loadUserData();
+  }, [user]);
+
+  // ── SYNC dark mode to Supabase ──
+  useEffect(() => {
+    if (!user || !userPrefsLoaded) return;
+    supabase.from("user_preferences")
+      .update({ dark_mode: darkMode, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id);
+  }, [darkMode, user, userPrefsLoaded]);
+
+  // ── SYNC followed topics to Supabase ──
+  useEffect(() => {
+    if (!user || !userPrefsLoaded) return;
+    supabase.from("user_preferences")
+      .update({ followed_topics: followedTopics, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id);
+  }, [followedTopics, user, userPrefsLoaded]);
+
+  // ── BOOKMARK: save/remove article to Supabase ──
+  const syncBookmark = async (article, isAdding) => {
+    if (!user) return;
+    const articleId = String(article.id);
+    if (isAdding) {
+      await supabase.from("bookmarks").upsert({
+        user_id: user.id, article_id: articleId, article_data: article,
+      });
+    } else {
+      await supabase.from("bookmarks").delete()
+        .eq("user_id", user.id).eq("article_id", articleId);
+    }
+  };
+
+  // ── READING HISTORY: record article read ──
+  const syncRead = async (article) => {
+    if (!user) return;
+    await supabase.from("reading_history").upsert({
+      user_id: user.id,
+      article_id: String(article.id),
+      lean: article.lean,
+      category: article.category,
+    });
+  };
+
+  // ── SIGN OUT ──
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setUserPrefsLoaded(false);
+    setBookmarks([]);
+    setHistory([]);
+  };
 
   const CACHE_KEY = "clarion_feed_v3";
   const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
@@ -1846,6 +2089,7 @@ function ClarionFinal() {
       `}</style>
 
       {showOnboarding && <OnboardingScreen onDone={()=>setShowOnboarding(false)}/>}
+      {showAuth && <AuthModal onClose={()=>setShowAuth(false)} onAuth={u=>setUser(u)}/>}
       {compareStory && <CompareView story={compareStory} allArticles={all} onClose={()=>setCompareStory(null)}/>}
 
       {verifying  && <FactSheet article={verifying} onClose={()=>setVerifying(null)}/>}
@@ -2002,7 +2246,7 @@ function ClarionFinal() {
                 {searchLoading && <div style={{display:"flex",gap:10,alignItems:"center",padding:"20px 0"}}><Spinner/><p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:0}}>Searching…</p></div>}
                 {searchResults.map(a=>(
                   <div key={a.id} style={{marginBottom:10}}>
-                    <ArticleCard a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={false} isGrid={false} onCompare={setCompareStory}/>
+                    <ArticleCard a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={false} isGrid={false} onCompare={setCompareStory} onBookmarkSync={syncBookmark}/>
                   </div>
                 ))}
               </div>
@@ -2259,10 +2503,45 @@ function ClarionFinal() {
         {tab==="profile" && (
           <div style={{paddingTop:20}}>
 
+            {/* ── ACCOUNT SECTION ── */}
+            {user ? (
+              <div style={{background:C.surface,borderRadius:16,padding:"18px",marginBottom:24,display:"flex",alignItems:"center",gap:14}}>
+                <div style={{
+                  width:48,height:48,borderRadius:"50%",
+                  background:C.orange,display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:20,fontWeight:700,color:"#fff",fontFamily:F.display,flexShrink:0,
+                }}>
+                  {(user.user_metadata?.display_name||user.email||"?")[0].toUpperCase()}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{fontFamily:F.display,fontSize:15,fontWeight:700,color:C.text,margin:"0 0 2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {user.user_metadata?.display_name || user.email?.split("@")[0]}
+                  </p>
+                  <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</p>
+                </div>
+                <button onClick={signOut} style={{
+                  flexShrink:0,padding:"7px 14px",borderRadius:10,border:`1px solid ${C.border}`,
+                  background:"transparent",color:C.muted,fontFamily:F.text,fontSize:12,cursor:"pointer",
+                }}>Sign Out</button>
+              </div>
+            ) : (
+              <div style={{background:C.accentSoft,borderRadius:16,padding:"20px",marginBottom:24,border:`1px solid ${C.orange}30`}}>
+                <p style={{fontFamily:F.display,fontSize:16,fontWeight:700,color:C.text,margin:"0 0 6px"}}>Save your preferences</p>
+                <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 14px",lineHeight:1.5}}>
+                  Sign in to sync bookmarks, reading history, and settings across all your devices.
+                </p>
+                <button onClick={()=>setShowAuth(true)} style={{
+                  background:C.orange,border:"none",borderRadius:10,
+                  padding:"10px 20px",fontSize:13,fontWeight:700,
+                  color:"#fff",cursor:"pointer",fontFamily:F.text,
+                  boxShadow:"0 2px 8px rgba(232,149,109,0.35)",
+                }}>Sign In / Create Account</button>
+              </div>
+            )}
+
             {/* ── SETTINGS ── */}
-            <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 16px",letterSpacing:"-0.02em"}}>Settings</h2>
+            <h2 style={{fontFamily:F.display,fontSize:18,fontWeight:700,color:C.text,margin:"0 0 12px",letterSpacing:"-0.01em"}}>Settings</h2>
             <div style={{background:C.surface,borderRadius:16,overflow:"hidden",marginBottom:28}}>
-              {/* Dark mode row */}
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",borderBottom:`1px solid ${C.divider}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
                   <span style={{fontSize:18}}>{darkMode?"☀️":"🌙"}</span>
@@ -2271,7 +2550,6 @@ function ClarionFinal() {
                     <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{darkMode?"Switch to light theme":"Switch to dark theme"}</p>
                   </div>
                 </div>
-                {/* Toggle switch */}
                 <div onClick={()=>setDarkMode(v=>!v)} style={{
                   width:48,height:28,borderRadius:14,
                   background:darkMode?C.orange:C.divider,
@@ -2279,16 +2557,13 @@ function ClarionFinal() {
                   transition:"background 0.25s",flexShrink:0,
                 }}>
                   <div style={{
-                    position:"absolute",top:3,
-                    left:darkMode?22:3,
-                    width:22,height:22,borderRadius:"50%",
-                    background:"#fff",
+                    position:"absolute",top:3,left:darkMode?22:3,
+                    width:22,height:22,borderRadius:"50%",background:"#fff",
                     boxShadow:"0 1px 4px rgba(0,0,0,0.2)",
                     transition:"left 0.22s cubic-bezier(0.4,0,0.2,1)",
                   }}/>
                 </div>
               </div>
-              {/* Cache TTL hint row */}
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
                   <span style={{fontSize:18}}>⏱</span>
@@ -2340,7 +2615,7 @@ function ClarionFinal() {
             {bookmarks.length===0
               ? <p style={{fontFamily:F.text,fontSize:14,color:C.muted}}>Tap "Save" on any story to find it here.</p>
               : all.filter(a=>bookmarks.includes(a.id)).map((a,i)=>(
-                  <ArticleCard key={a.id} a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={i===0} isGrid={false} onCompare={setCompareStory}/>
+                  <ArticleCard key={a.id} a={a} onRead={onRead} bookmarks={bookmarks} setBookmarks={setBookmarks} setVerifying={setVerifying} onJournalist={setJournalist} isLead={i===0} isGrid={false} onCompare={setCompareStory} onBookmarkSync={syncBookmark}/>
                 ))
             }
 
