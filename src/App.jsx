@@ -1858,46 +1858,35 @@ function ClarionFinal() {
         background: C.bg,
         borderBottom: `1px solid ${C.border}`,
       }}>
-        <div style={{maxWidth:640, margin:"0 auto", padding:"12px 20px 10px"}}>
-          <div style={{display:"flex", alignItems:"center", justifyContent:"space-between"}}>
+        <div style={{maxWidth:640, margin:"0 auto", padding:"16px 20px 12px"}}>
+          <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6}}>
             {/* Logo */}
             <div style={{
               fontFamily:"'Times New Roman',Times,serif",
-              fontSize:30, fontWeight:700, color:C.text,
+              fontSize:34, fontWeight:700, color:C.text,
               letterSpacing:"-0.07em", lineHeight:1, userSelect:"none",
               display:"flex", alignItems:"baseline",
             }}>
               <span>Clar</span><span style={{fontStyle:"italic"}}>i</span><span>on.</span>
             </div>
-            {/* Right icons — search, dark mode, refresh only */}
-            <div style={{display:"flex", gap:6, alignItems:"center"}}>
-              {/* Live dot + search */}
-              <div style={{display:"flex", alignItems:"center", gap:6, marginRight:2}}>
-                {lastUpdatedLabel && !aiLoading && (
-                  <div style={{width:6,height:6,borderRadius:"50%",background:"#5CB87A",
-                    animation:"pulse-dot 2s ease-in-out infinite", flexShrink:0}}/>
-                )}
-                {aiLoading && <div style={{width:14,height:14}}><Spinner size={14}/></div>}
-              </div>
+            {/* Right icons — search + circular refresh */}
+            <div style={{display:"flex", gap:8, alignItems:"center"}}>
               <button onClick={()=>setShowSearch(v=>!v)} style={{
-                width:34,height:34,borderRadius:980,
+                width:36,height:36,borderRadius:980,
                 display:"flex",alignItems:"center",justifyContent:"center",
-                background:"none", border:"none", cursor:"pointer",
+                background:C.surface, border:`1px solid ${C.border}`,
+                cursor:"pointer", flexShrink:0, transition:"all 0.2s",
               }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={showSearch?C.text:C.muted} strokeWidth="2" strokeLinecap="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showSearch?C.text:C.muted} strokeWidth="2" strokeLinecap="round">
                   <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
                 </svg>
               </button>
-              <button onClick={()=>setDarkMode(v=>!v)} style={{
-                width:34,height:34,borderRadius:980,
-                display:"flex",alignItems:"center",justifyContent:"center",
-                background:"none",border:"none",cursor:"pointer",fontSize:16,
-              }}>{darkMode?"☀️":"🌙"}</button>
               <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); loadAI(true); }} disabled={aiLoading} style={{
-                width:34,height:34,borderRadius:980,
+                width:36,height:36,borderRadius:980,
                 display:"flex",alignItems:"center",justifyContent:"center",
-                background:C.orange,border:"none",cursor:"pointer",
-                opacity:aiLoading?0.5:1,transition:"opacity 0.2s",
+                background:"#E8956D", border:"none", cursor:"pointer",
+                boxShadow:"0 2px 10px rgba(232,149,109,0.45)",
+                opacity:aiLoading?0.6:1, transition:"all 0.2s", flexShrink:0,
               }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M1 4v6h6M23 20v-6h-6"/><path d="M3.51 9a9 9 0 0114.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0020.49 15"/>
@@ -1905,6 +1894,18 @@ function ClarionFinal() {
               </button>
             </div>
           </div>
+
+          {/* Last updated indicator — restored */}
+          {lastUpdatedLabel && (
+            <div style={{display:"flex", alignItems:"center", gap:5, marginBottom:8}}>
+              <div style={{width:6,height:6,borderRadius:"50%",
+                background: aiLoading ? C.muted : "#5CB87A", flexShrink:0,
+                animation: aiLoading ? "none" : "pulse-dot 2s ease-in-out infinite"}}/>
+              <span style={{fontFamily:F.text, fontSize:11, color:C.muted}}>
+                {aiLoading ? "Refreshing…" : `Updated ${lastUpdatedLabel}`}
+              </span>
+            </div>
+          )}
 
           {/* Search — icon that expands */}
           {showSearch && (
@@ -2257,6 +2258,50 @@ function ClarionFinal() {
 
         {tab==="profile" && (
           <div style={{paddingTop:20}}>
+
+            {/* ── SETTINGS ── */}
+            <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 16px",letterSpacing:"-0.02em"}}>Settings</h2>
+            <div style={{background:C.surface,borderRadius:16,overflow:"hidden",marginBottom:28}}>
+              {/* Dark mode row */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",borderBottom:`1px solid ${C.divider}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <span style={{fontSize:18}}>{darkMode?"☀️":"🌙"}</span>
+                  <div>
+                    <p style={{fontFamily:F.text,fontSize:14,fontWeight:600,color:C.text,margin:0}}>{darkMode?"Light Mode":"Dark Mode"}</p>
+                    <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{darkMode?"Switch to light theme":"Switch to dark theme"}</p>
+                  </div>
+                </div>
+                {/* Toggle switch */}
+                <div onClick={()=>setDarkMode(v=>!v)} style={{
+                  width:48,height:28,borderRadius:14,
+                  background:darkMode?C.orange:C.divider,
+                  position:"relative",cursor:"pointer",
+                  transition:"background 0.25s",flexShrink:0,
+                }}>
+                  <div style={{
+                    position:"absolute",top:3,
+                    left:darkMode?22:3,
+                    width:22,height:22,borderRadius:"50%",
+                    background:"#fff",
+                    boxShadow:"0 1px 4px rgba(0,0,0,0.2)",
+                    transition:"left 0.22s cubic-bezier(0.4,0,0.2,1)",
+                  }}/>
+                </div>
+              </div>
+              {/* Cache TTL hint row */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <span style={{fontSize:18}}>⏱</span>
+                  <div>
+                    <p style={{fontFamily:F.text,fontSize:14,fontWeight:600,color:C.text,margin:0}}>Feed Updates</p>
+                    <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>Refreshes every 3 minutes</p>
+                  </div>
+                </div>
+                <span style={{fontFamily:F.text,fontSize:12,color:C.muted}}>Auto</span>
+              </div>
+            </div>
+
+            <div style={{height:1,background:C.divider,margin:"0 0 24px"}}/>
 
             {/* ── DAILY BRIEFING ── */}
             <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>Daily Briefing</h2>
