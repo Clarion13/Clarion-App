@@ -1769,7 +1769,10 @@ function ClarionFinal() {
   const [briefing,setBriefing]=useState(null);
   const [briefingLoading,setBriefingLoading]=useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return !localStorage.getItem("clarion_onboarded"); }
+    catch(e) { return true; }
+  });
   const [followedTopics, setFollowedTopics] = useState(["Politics","Tech","World"]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
@@ -1843,6 +1846,11 @@ function ClarionFinal() {
       // Preferences
       const { data: prefs } = await supabase
         .from("user_preferences").select("*").eq("user_id", user.id).single();
+      // If user has ever completed onboarding, never show it again
+      if (prefs?.onboarded) {
+        setShowOnboarding(false);
+        try { localStorage.setItem("clarion_onboarded","1"); } catch(e){}
+      }
       if (prefs) {
         setDarkMode(prefs.dark_mode ?? false);
         setFollowedTopics(prefs.followed_topics ?? ["Politics","Tech","World"]);
@@ -2088,7 +2096,13 @@ function ClarionFinal() {
         ::-webkit-scrollbar { display: none; }
       `}</style>
 
-      {showOnboarding && <OnboardingScreen onDone={()=>setShowOnboarding(false)}/>}
+      {showOnboarding && <OnboardingScreen onDone={()=>{
+        setShowOnboarding(false);
+        try { localStorage.setItem("clarion_onboarded","1"); } catch(e){}
+        if(user) supabase.from("user_preferences")
+          .update({ onboarded: true, updated_at: new Date().toISOString() })
+          .eq("user_id", user.id);
+      }}/>}
       {showAuth && <AuthModal onClose={()=>setShowAuth(false)} onAuth={u=>setUser(u)}/>}
       {compareStory && <CompareView story={compareStory} allArticles={all} onClose={()=>setCompareStory(null)}/>}
 
