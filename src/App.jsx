@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, Component } from "react";
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { createClient } from "@supabase/supabase-js";
 
 const SUPA_URL = "https://qizqfeibqfqvfdzvqtin.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpenFmZWlicWZxdmZkenZxdGluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjQ3MzcsImV4cCI6MjA4ODQwMDczN30.oBiHaOZYbNi6-PyoAFeE_eUoaPoesCB1TOrKK9Qr4TM";
