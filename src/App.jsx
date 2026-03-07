@@ -1323,7 +1323,7 @@ function DNATree({ articles }) {
               <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:pOpen?12:0}}>
                 <button onClick={e=>togProv(e,selectedId)} style={{fontSize:11,fontFamily:F.text,color:pOpen?C.accent:C.muted,background:pOpen?C.accentSoft:C.surface,border:`1px solid ${pOpen?C.accent+"40":C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>{pOpen?"Hide":"Verify"}</button>
                 {selNode.url&&<button onClick={e=>{e.stopPropagation();window.open(selNode.url,"_blank","noopener,noreferrer");}} style={{fontSize:11,fontFamily:F.text,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>Article ↗</button>}
-                {selNode.wayback&&<button onClick={e=>{e.stopPropagation();window.open(selNode.wayback,"_blank","noopener,noreferrer");}} style={{fontSize:11,fontFamily:F.text,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}>Archive</button>}
+                {selNode.wayback&&<button onClick={e=>{e.stopPropagation();window.open(selNode.wayback,"_blank","noopener,noreferrer");}} style={{fontSize:11,fontFamily:F.text,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>Archive</button>}
               </div>
               {pOpen&&(
                 <div style={{background:C.surface,borderRadius:10,padding:"14px 16px",border:`1px solid ${selWarn?C.breaking+"30":C.border}`}}>
@@ -1336,7 +1336,7 @@ function DNATree({ articles }) {
                     <p style={{fontFamily:F.text,fontSize:12,color:selWarn?C.breaking:C.sub,margin:0,lineHeight:1.6,background:selWarn?C.breaking+"08":"transparent",borderRadius:6,padding:selWarn?"6px 10px":0}}>{selNode.quoteChange.replace("⚠ ","")}</p>
                   </div>}
                   {selNode.wayback&&<div style={{marginTop:10,paddingTop:8,borderTop:`1px solid ${C.divider}`,display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:11,color:C.muted,fontFamily:F.text}>Archived:</span>
+                    <span style={{fontSize:11,color:C.muted,fontFamily:F.text}}>Archived:</span>
                     <span onClick={e=>{e.stopPropagation();window.open(selNode.wayback,"_blank","noopener,noreferrer");}} style={{fontSize:11,color:C.accent,fontFamily:F.text,cursor:"pointer",textDecoration:"underline"}}>Wayback Machine ↗</span>
                   </div>}
                 </div>
