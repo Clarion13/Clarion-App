@@ -1779,6 +1779,7 @@ function ClarionFinal() {
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [compareStory, setCompareStory] = useState(null);
+  const [showAbout, setShowAbout] = useState(false);
   const [prevTab, setPrevTab] = useState(null);
   const [tabTransition, setTabTransition] = useState(false);
   const [user, setUser] = useState(null);
@@ -2466,6 +2467,87 @@ function ClarionFinal() {
           </>
         )}
 
+        {/* ── ABOUT FOOTER — bottom of feed ── */}
+        {tab==="feed" && searchResults===null && (
+          <div style={{marginTop:8, marginBottom:8}}>
+            <div style={{height:1, background:C.border}}/>
+            <div onClick={()=>setShowAbout(v=>!v)} style={{
+              display:"flex", alignItems:"center", justifyContent:"space-between",
+              padding:"18px 4px", cursor:"pointer",
+            }}>
+              <div style={{display:"flex", alignItems:"center", gap:10}}>
+                <span style={{fontFamily:"'Times New Roman',Times,serif", fontSize:18,
+                  fontWeight:700, color:C.text, letterSpacing:"-0.07em"}}>
+                  Clar<span style={{fontStyle:"italic"}}>i</span>on.
+                </span>
+                <span style={{fontFamily:F.text, fontSize:12, color:C.muted}}>About &amp; Mission</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2" strokeLinecap="round">
+                {showAbout ? <path d="M18 15l-6-6-6 6"/> : <path d="M6 9l6 6 6-6"/>}
+              </svg>
+            </div>
+            {showAbout && (
+              <div style={{paddingBottom:32, animation:"tab-in 0.2s ease"}}>
+                <div style={{padding:"0 0 24px", borderBottom:`1px solid ${C.border}`, marginBottom:24}}>
+                  <p style={{fontFamily:F.text, fontSize:10, fontWeight:700, color:C.orange,
+                    letterSpacing:"0.1em", textTransform:"uppercase", margin:"0 0 10px"}}>Our Mission</p>
+                  <p style={{fontFamily:F.display, fontSize:18, fontWeight:800, color:C.text,
+                    margin:"0 0 12px", lineHeight:1.3, letterSpacing:"-0.02em"}}>
+                    An informed democracy needs citizens who read across the spectrum.
+                  </p>
+                  <p style={{fontFamily:F.text, fontSize:13, color:C.sub, lineHeight:1.75, margin:0}}>
+                    Clarion aggregates news from left, center, and right-leaning sources and makes the bias visible — not to tell you what to think, but to make sure you see the full picture.
+                  </p>
+                </div>
+                <div style={{marginBottom:24, borderBottom:`1px solid ${C.border}`, paddingBottom:24}}>
+                  <p style={{fontFamily:F.text, fontSize:10, fontWeight:700, color:C.orange,
+                    letterSpacing:"0.1em", textTransform:"uppercase", margin:"0 0 16px"}}>How It Works</p>
+                  {[
+                    { icon:"◀ ● ▶", title:"Lean Ratings", body:"Every story tagged left, center, or right based on the outlet's historical bias." },
+                    { icon:"🧬", title:"Story DNA", body:"Trace how a story evolves across sources and flag spin or missing context." },
+                    { icon:"🗺", title:"World Map", body:"Stories geo-tagged on a live map with connection lines between related cities." },
+                    { icon:"⚖", title:"Compare Coverage", body:"See how left, center, and right outlets frame the same headline differently." },
+                    { icon:"📊", title:"Balance Meter", body:"Track your reading diet across the political spectrum." },
+                  ].map(({icon,title,body}) => (
+                    <div key={title} style={{display:"flex", gap:12, marginBottom:14, alignItems:"flex-start"}}>
+                      <div style={{width:36,height:36,borderRadius:10,background:C.accentSoft,
+                        display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>{icon}</div>
+                      <div style={{paddingTop:2}}>
+                        <p style={{fontFamily:F.display,fontSize:13,fontWeight:700,color:C.text,margin:"0 0 2px"}}>{title}</p>
+                        <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0,lineHeight:1.55}}>{body}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginBottom:24, borderBottom:`1px solid ${C.border}`, paddingBottom:24}}>
+                  <p style={{fontFamily:F.text, fontSize:10, fontWeight:700, color:C.orange,
+                    letterSpacing:"0.1em", textTransform:"uppercase", margin:"0 0 12px"}}>Lean Scores</p>
+                  {[
+                    { color:C.left,   label:"◀ Left",   desc:"NYT, Guardian, NPR, CNN" },
+                    { color:C.center, label:"● Center",  desc:"Reuters, AP, BBC, Bloomberg" },
+                    { color:C.right,  label:"▶ Right",   desc:"Fox News, WSJ, Breitbart" },
+                  ].map(({color,label,desc}) => (
+                    <div key={label} style={{display:"flex", alignItems:"center", gap:10, marginBottom:8}}>
+                      <span style={{fontFamily:F.text,fontSize:11,fontWeight:700,color:"#fff",
+                        background:color,borderRadius:20,padding:"3px 10px",flexShrink:0}}>{label}</span>
+                      <span style={{fontFamily:F.text,fontSize:12,color:C.muted}}>{desc}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <p style={{fontFamily:"'Times New Roman',Times,serif",fontSize:20,fontWeight:700,
+                    color:C.text,letterSpacing:"-0.05em",margin:"0 0 4px"}}>
+                    Clar<span style={{fontStyle:"italic"}}>i</span>on.
+                  </p>
+                  <p style={{fontFamily:F.text,fontSize:11,color:C.muted,margin:0}}>
+                    theclarion.app · Powered by Claude AI
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {tab==="map" && (
           <div style={{paddingTop:20}}>
             <HeatMap articles={all} onRegion={r=>{setRegionFilter(r===regionFilter?null:r);setTab("feed");}}/>
@@ -2676,132 +2758,7 @@ function ClarionFinal() {
             })}
           </div>
         )}
-      {tab==="about" && (
-        <div style={{paddingTop:0, paddingBottom:60}}>
-
-          {/* ── HERO MASTHEAD ── */}
-          <div style={{
-            textAlign:"center",
-            padding:"48px 24px 36px",
-            borderBottom:`1px solid ${C.border}`,
-            marginBottom:0,
-          }}>
-            <div style={{
-              fontFamily:"'Times New Roman',Times,serif",
-              fontSize:52, fontWeight:700, color:C.text,
-              letterSpacing:"-0.07em", lineHeight:1, marginBottom:10,
-            }}>
-              Clar<span style={{fontStyle:"italic"}}>i</span>on.
-            </div>
-            <p style={{
-              fontFamily:F.text, fontSize:13, fontWeight:500,
-              color:C.muted, margin:0, letterSpacing:"0.12em",
-              textTransform:"uppercase",
-            }}>Loud &amp; Clear</p>
-          </div>
-
-          {/* ── MISSION ── */}
-          <div style={{padding:"32px 20px 28px", borderBottom:`1px solid ${C.border}`}}>
-            <p style={{
-              fontFamily:F.text, fontSize:10, fontWeight:700,
-              color:C.orange, letterSpacing:"0.1em", textTransform:"uppercase",
-              margin:"0 0 10px",
-            }}>Our Mission</p>
-            <p style={{
-              fontFamily:F.display, fontSize:22, fontWeight:800,
-              color:C.text, margin:"0 0 16px", lineHeight:1.25,
-              letterSpacing:"-0.03em",
-            }}>An informed democracy needs citizens who read across the spectrum.</p>
-            <p style={{fontFamily:F.text, fontSize:14, color:C.sub, lineHeight:1.75, margin:0}}>
-              Clarion aggregates news from left, center, and right-leaning sources and makes the bias visible — not to tell you what to think, but to make sure you see the full picture.
-            </p>
-          </div>
-
-          {/* ── HOW IT WORKS ── */}
-          <div style={{padding:"32px 20px 0", borderBottom:`1px solid ${C.border}`}}>
-            <p style={{
-              fontFamily:F.text, fontSize:10, fontWeight:700,
-              color:C.orange, letterSpacing:"0.1em", textTransform:"uppercase",
-              margin:"0 0 24px",
-            }}>How It Works</p>
-            {[
-              { icon:"◀ ● ▶", title:"Lean Ratings", body:"Every story is tagged left, center, or right based on the publishing outlet's historical bias — source-level classification, not AI opinion." },
-              { icon:"🧬", title:"Story DNA", body:"The DNA tracer follows a story across sources, showing how the same event is framed differently and flagging spin or missing context." },
-              { icon:"🗺", title:"World News Map", body:"Stories are geo-tagged on a live map. Dashed lines connect cities mentioned in the same article, revealing the global relationships behind headlines." },
-              { icon:"⚖", title:"Compare Coverage", body:"Tap Compare on any story to see how left, center, and right outlets would each frame the same headline — angle, word choice, and emphasis side by side." },
-              { icon:"📊", title:"Balance Meter", body:"Your Echo Chamber Meter tracks which lean you've been reading. The goal isn't to change your views — just to make your media diet conscious." },
-            ].map(({icon,title,body}, idx, arr) => (
-              <div key={title} style={{
-                display:"flex", gap:16, alignItems:"flex-start",
-                paddingBottom:24,
-                marginBottom: idx < arr.length-1 ? 0 : 0,
-                borderBottom: idx < arr.length-1 ? `1px solid ${C.divider}` : "none",
-                marginBottom:24,
-              }}>
-                <div style={{
-                  width:44, height:44, borderRadius:12,
-                  background:C.accentSoft,
-                  border:`1px solid ${C.orange}22`,
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:18, flexShrink:0,
-                }}>{icon}</div>
-                <div style={{flex:1, paddingTop:2}}>
-                  <p style={{fontFamily:F.display, fontSize:15, fontWeight:700, color:C.text, margin:"0 0 5px"}}>{title}</p>
-                  <p style={{fontFamily:F.text, fontSize:13, color:C.muted, margin:0, lineHeight:1.65}}>{body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* ── LEAN SCORES ── */}
-          <div style={{padding:"32px 20px", borderBottom:`1px solid ${C.border}`}}>
-            <p style={{
-              fontFamily:F.text, fontSize:10, fontWeight:700,
-              color:C.orange, letterSpacing:"0.1em", textTransform:"uppercase",
-              margin:"0 0 16px",
-            }}>Understanding Lean Scores</p>
-            {[
-              { color:C.left,   label:"◀ Left",   outlet:"NYT, Guardian, NPR, CNN", desc:"Leans liberal in editorial stance and story selection." },
-              { color:C.center, label:"● Center",  outlet:"Reuters, AP, BBC, Bloomberg", desc:"Aims for balance and factual reporting without strong editorial lean." },
-              { color:C.right,  label:"▶ Right",   outlet:"Fox News, WSJ, Breitbart", desc:"Leans conservative in editorial stance and story selection." },
-            ].map(({color,label,outlet,desc}) => (
-              <div key={label} style={{
-                display:"flex", gap:14, alignItems:"flex-start",
-                padding:"16px 0",
-                borderBottom:`1px solid ${C.divider}`,
-              }}>
-                <span style={{
-                  fontFamily:F.text, fontSize:11, fontWeight:700,
-                  color:"#fff", background:color,
-                  borderRadius:20, padding:"4px 12px",
-                  flexShrink:0, marginTop:2,
-                }}>{label}</span>
-                <div>
-                  <p style={{fontFamily:F.text, fontSize:12, fontWeight:600, color:C.text, margin:"0 0 2px"}}>{outlet}</p>
-                  <p style={{fontFamily:F.text, fontSize:12, color:C.muted, margin:0, lineHeight:1.5}}>{desc}</p>
-                </div>
-              </div>
-            ))}
-            <p style={{fontFamily:F.text, fontSize:12, color:C.muted, margin:"16px 0 0", lineHeight:1.6}}>
-              Scores are assigned at the outlet level. A left-leaning outlet can publish a centrist story — the rating reflects the publication's overall editorial stance, not each individual article.
-            </p>
-          </div>
-
-          {/* ── FOOTER ── */}
-          <div style={{padding:"28px 20px 0", textAlign:"center"}}>
-            <p style={{fontFamily:"'Times New Roman',Times,serif", fontSize:22, fontWeight:700, color:C.text, letterSpacing:"-0.05em", margin:"0 0 6px"}}>
-              Clar<span style={{fontStyle:"italic"}}>i</span>on.
-            </p>
-            <p style={{fontFamily:F.text, fontSize:12, color:C.muted, margin:"0 0 4px"}}>
-              Coming to <strong style={{color:C.text, fontWeight:600}}>clarion.news</strong>
-            </p>
-            <p style={{fontFamily:F.text, fontSize:11, color:C.muted, margin:0}}>
-              Powered by Claude AI · Built with curiosity
-            </p>
-          </div>
-
-        </div>
-      )}
+}
 
       </div>
 
@@ -2824,7 +2781,6 @@ function ClarionFinal() {
             { id:"balance", label:"Balance", svg:<><circle cx="12" cy="12" r="1" fill="currentColor"/><path d="M12 12 L6 7 M12 12 L18 7 M5 17h14M12 4v2" strokeWidth="1.7" strokeLinecap="round"/></> },
             { id:"dna",     label:"DNA",     svg:<><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8" strokeWidth="1.7" strokeLinecap="round"/></> },
             { id:"profile", label:"Profile", svg:<><circle cx="12" cy="8" r="4" strokeWidth="1.7"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" strokeWidth="1.7" strokeLinecap="round"/></> },
-            { id:"about",   label:"About",   svg:<><circle cx="12" cy="12" r="9" strokeWidth="1.7"/><path d="M12 8v4M12 16h.01" strokeWidth="2" strokeLinecap="round"/></> },
           ].map(n => {
             const active = tab === n.id;
             return (
