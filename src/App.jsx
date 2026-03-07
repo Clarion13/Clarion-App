@@ -84,7 +84,7 @@ function decodeHTML(str) {
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ").replace(/&ndash;/g, "–").replace(/&mdash;/g, "—")
     .replace(/&lsquo;/g, "'").replace(/&rsquo;/g, "'")
-    .replace(/&ldquo;/g, "“").replace(/&rdquo;/g, "”")
+    .replace(/&ldquo;/g, """).replace(/&rdquo;/g, """)
     .replace(/&hellip;/g, "…").replace(/&bull;/g, "•")
     .replace(/<[^>]+>/g, "").trim();
 }
@@ -618,11 +618,11 @@ function fuzzyMatchDirect(region) {
 const fuzzyMatch = fuzzyMatchDirect;
 
 const CONTINENT_FILTERS = [
-  { id:"all",      label:"All" },
+  { id:"all",      label:"All Regions" },
   { id:"americas", label:"Americas" },
   { id:"europe",   label:"Europe" },
   { id:"asia",     label:"Asia" },
-  { id:"mideast",  label:"Mid East" },
+  { id:"mideast",  label:"Middle East" },
   { id:"africa",   label:"Africa" },
   { id:"oceania",  label:"Oceania" },
 ];
@@ -877,16 +877,40 @@ function HeatMap({ articles, onRegion }) {
       {/* Header */}
       <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 12px",letterSpacing:"-0.02em"}}>World News Map</h2>
 
-      {/* Continent filter tabs */}
-      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:10,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
-        {CONTINENT_FILTERS.map(f => (
-          <button key={f.id} onClick={()=>setContinentFilter(f.id)} style={{
-            ...glassBtn(continentFilter===f.id),
-            padding:"7px 14px", fontSize:12, borderRadius:20, flexShrink:0, whiteSpace:"nowrap",
-            fontWeight: continentFilter===f.id ? 600 : 400,
-            color: continentFilter===f.id ? C.text : C.muted,
-          }}>{f.label}</button>
-        ))}
+      {/* Continent filter — native dropdown */}
+      <div style={{display:"flex", alignItems:"center", gap:10, marginBottom:10}}>
+        <div style={{position:"relative", flex:1}}>
+          <select
+            value={continentFilter}
+            onChange={e => setContinentFilter(e.target.value)}
+            style={{
+              width:"100%", appearance:"none", WebkitAppearance:"none",
+              background:C.surface, border:`1px solid ${C.border}`,
+              borderRadius:10, padding:"9px 36px 9px 14px",
+              fontFamily:F.text, fontSize:13, fontWeight:500,
+              color:C.text, cursor:"pointer", outline:"none",
+            }}
+          >
+            {CONTINENT_FILTERS.map(f => (
+              <option key={f.id} value={f.id}>{f.label}</option>
+            ))}
+          </select>
+          {/* Chevron icon */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.muted}
+            strokeWidth="2" strokeLinecap="round"
+            style={{position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", pointerEvents:"none"}}>
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+        {continentFilter !== "all" && (
+          <button onClick={()=>setContinentFilter("all")} style={{
+            ...glassBtn(false), padding:"9px 14px", fontSize:12,
+            borderRadius:10, flexShrink:0, color:C.muted,
+          }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M18 6L6 18M6 6l12 12"/></svg>
+            Clear
+          </button>
+        )}
       </div>
 
       <div ref={mapRef} style={{width:"100%",height:400,borderRadius:16,overflow:"hidden",marginBottom:0,border:`1px solid ${C.border}`}}/>
