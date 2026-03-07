@@ -1436,7 +1436,7 @@ function FactSheet({ article, onClose }) {
             <p style={{fontFamily:F.text,fontSize:10,fontWeight:600,color:C.muted,margin:"0 0 4px",letterSpacing:"0.06em"}}>MISSING CONTEXT</p>
             <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:0,lineHeight:1.5}}>{res.missing_context}</p>
           </div>
-          <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:0,lineHeight:1.5}>{res.recommendation}</p>
+          <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:0,lineHeight:1.5}}>{res.recommendation}</p>
         </>
       )}
     </Sheet>
