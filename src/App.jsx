@@ -2803,36 +2803,97 @@ function ClarionFinal() {
 
         {tab==="balance" && (
           <div style={{paddingTop:20}}>
-            <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>Balance Meter</h2>
+            <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>Personal Echo Chamber</h2>
             <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 24px",lineHeight:1.5}}>Based on the stories you have opened. Read across the spectrum to keep the needle centered.</p>
 
             <BiasGauge history={history} allArticles={all}/>
 
             {history.length > 0 && (()=>{
-              const unread = all.filter(a => !history.includes(a.id));
-              const leftCount  = history.filter(id=>{ const a=all.find(x=>x.id===id); return a && a.lean==="left"; }).length;
-              const rightCount = history.filter(id=>{ const a=all.find(x=>x.id===id); return a && a.lean==="right"; }).length;
-              const wantedLean = leftCount > rightCount ? "right" : leftCount < rightCount ? "left" : null;
-              const suggestions = wantedLean
-                ? unread.filter(a=>a.lean===wantedLean).slice(0,4)
-                : unread.slice(0,4);
-              if(!suggestions.length) return null;
+              // Build a list of {readArticle, counterpart} pairs:
+              // For each article the user read, find an unread article
+              // in the SAME category but from the opposite lean
+              const readArticles = history
+                .map(id => all.find(a => a.id === id))
+                .filter(Boolean);
+
+              const oppositeLean = l => l === "left" ? "right" : l === "right" ? "left" : null;
+
+              const suggestions = [];
+              const usedIds = new Set(history);
+
+              for (const read of readArticles) {
+                if (!read.category || !read.lean || read.lean === "center") continue;
+                const opp = oppositeLean(read.lean);
+                const match = all.find(a =>
+                  !usedIds.has(a.id) &&
+                  a.category === read.category &&
+                  a.lean === opp
+                );
+                if (match) {
+                  usedIds.add(match.id); // don't reuse same suggestion
+                  suggestions.push({ read, match });
+                  if (suggestions.length >= 4) break;
+                }
+              }
+
+              // Fallback: if no matched-topic suggestions, show any unread opposite-lean
+              if (!suggestions.length) {
+                const leftCount  = readArticles.filter(a => a.lean === "left").length;
+                const rightCount = readArticles.filter(a => a.lean === "right").length;
+                const wantedLean = leftCount > rightCount ? "right" : leftCount < rightCount ? "left" : null;
+                if (!wantedLean) return null;
+                const fallbacks = all
+                  .filter(a => !history.includes(a.id) && a.lean === wantedLean)
+                  .slice(0, 4);
+                if (!fallbacks.length) return null;
+                return (
+                  <div>
+                    <p style={{fontFamily:F.display,fontSize:15,fontWeight:700,color:C.text,margin:"0 0 4px"}}>Other perspectives</p>
+                    <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:"0 0 14px"}}>
+                      {"Stories from " + wantedLean + "-leaning sources you have not read yet."}
+                    </p>
+                    {fallbacks.map(a=>(
+                      <div key={a.id} onClick={()=>{ onRead(a.id); setTab("feed"); }}
+                        style={{display:"flex",gap:12,padding:"13px 0",borderBottom:"1px solid " + C.divider,cursor:"pointer",alignItems:"flex-start"}}>
+                        <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:leanColor(a.lean),flexShrink:0,minHeight:36}}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <p style={{fontFamily:F.text,fontSize:13,fontWeight:500,color:C.text,margin:"0 0 4px",lineHeight:1.4}}>{decodeHTML(a.headline)}</p>
+                          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                            <span style={{fontFamily:F.text,fontSize:11,color:C.muted}}>{a.source}</span>
+                            <span style={{fontSize:10,color:leanColor(a.lean),fontWeight:600,background:leanColor(a.lean)+"18",borderRadius:10,padding:"1px 6px",fontFamily:F.text}}>{a.lean}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
               return (
                 <div>
-                  <p style={{fontFamily:F.display,fontSize:15,fontWeight:700,color:C.text,margin:"0 0 4px"}}>Suggested for you</p>
+                  <p style={{fontFamily:F.display,fontSize:15,fontWeight:700,color:C.text,margin:"0 0 4px"}}>The other side</p>
                   <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:"0 0 14px"}}>
-                    {wantedLean ? "Stories from " + wantedLean + "-leaning sources to balance your feed." : "Stories you have not read yet."}
+                    Same topic, opposite perspective — stories you have not read yet.
                   </p>
-                  {suggestions.map(a=>(
-                    <div key={a.id} onClick={()=>{ onRead(a.id); setTab("feed"); }}
-                      style={{display:"flex",gap:12,padding:"13px 0",borderBottom:"1px solid " + C.divider,cursor:"pointer",alignItems:"flex-start"}}>
-                      <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:leanColor(a.lean),flexShrink:0,minHeight:36}}/>
-                      <div style={{flex:1,minWidth:0}}>
-                        <p style={{fontFamily:F.text,fontSize:13,fontWeight:500,color:C.text,margin:"0 0 4px",lineHeight:1.4}}>{decodeHTML(a.headline)}</p>
-                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                          <span style={{fontFamily:F.text,fontSize:11,color:C.muted}}>{a.source}</span>
-                          <span style={{fontSize:10,color:leanColor(a.lean),fontWeight:600,background:leanColor(a.lean)+"18",borderRadius:10,padding:"1px 6px",fontFamily:F.text}}>{a.lean}</span>
+                  {suggestions.map(({read, match})=>(
+                    <div key={match.id} onClick={()=>{ onRead(match.id); setTab("feed"); }}
+                      style={{background:C.surface,borderRadius:14,marginBottom:10,overflow:"hidden",cursor:"pointer"}}>
+                      {/* What you read */}
+                      <div style={{padding:"10px 14px 8px",borderBottom:"1px solid " + C.divider, opacity:0.6}}>
+                        <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3}}>
+                          <span style={{fontFamily:F.text,fontSize:9,fontWeight:700,letterSpacing:"0.07em",color:C.muted,textTransform:"uppercase"}}>You read</span>
+                          <span style={{fontSize:9,color:leanColor(read.lean),fontWeight:600,background:leanColor(read.lean)+"18",borderRadius:8,padding:"1px 5px",fontFamily:F.text}}>{read.lean}</span>
                         </div>
+                        <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0,lineHeight:1.35}}>{decodeHTML(read.headline)}</p>
+                      </div>
+                      {/* The other side */}
+                      <div style={{padding:"10px 14px 12px",borderLeft:"3px solid " + leanColor(match.lean)}}>
+                        <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
+                          <span style={{fontFamily:F.text,fontSize:9,fontWeight:700,letterSpacing:"0.07em",color:C.muted,textTransform:"uppercase"}}>Other side</span>
+                          <span style={{fontSize:9,color:leanColor(match.lean),fontWeight:700,background:leanColor(match.lean)+"18",borderRadius:8,padding:"1px 5px",fontFamily:F.text}}>{match.lean}</span>
+                          <span style={{fontFamily:F.text,fontSize:9,color:C.muted}}>{match.source}</span>
+                        </div>
+                        <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:0,lineHeight:1.4}}>{decodeHTML(match.headline)}</p>
                       </div>
                     </div>
                   ))}
