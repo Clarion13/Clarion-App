@@ -235,13 +235,13 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
             )}
             <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(saved?6:14); const adding=!saved; setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a, adding); }} style={{
               ...glassBtn(saved), padding:"7px 12px", fontSize:12,
-            }}>{saved?"★ Saved":"☆ Save"}</button>
+            }}>{saved?`${<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M5 4h14v17l-7-4-7 4V4z"/></svg>}Saved`:`${<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M5 4h14v17l-7-4-7 4V4z"/></svg>}Save`}</button>
             <button onClick={()=>setVerifying(a)} style={{
               ...glassBtn(false), padding:"7px 12px", fontSize:12,
             }}>Fact Check</button>
             {onCompare && <button onClick={e=>{ e.stopPropagation(); if(navigator.vibrate) navigator.vibrate(10); onCompare(a); }} style={{
               ...glassBtn(false), padding:"7px 12px", fontSize:12,
-            }}>⚖ Compare</button>}
+            }><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>}
           </div>
           <div style={{ display:"flex", gap:8 }}>
             <input value={comment} onChange={e=>setComment(e.target.value)} placeholder="Comment…"
@@ -618,13 +618,13 @@ function fuzzyMatchDirect(region) {
 const fuzzyMatch = fuzzyMatchDirect;
 
 const CONTINENT_FILTERS = [
-  { id:"all",      label:"🌍 All" },
-  { id:"americas", label:"🌎 Americas" },
-  { id:"europe",   label:"🇪🇺 Europe" },
-  { id:"asia",     label:"🌏 Asia" },
-  { id:"mideast",  label:"🕌 Mid East" },
-  { id:"africa",   label:"🌍 Africa" },
-  { id:"oceania",  label:"🦘 Oceania" },
+  { id:"all",      label:"All" },
+  { id:"americas", label:"Americas" },
+  { id:"europe",   label:"Europe" },
+  { id:"asia",     label:"Asia" },
+  { id:"mideast",  label:"Mid East" },
+  { id:"africa",   label:"Africa" },
+  { id:"oceania",  label:"Oceania" },
 ];
 
 const CITY_CONTINENT = {
@@ -664,7 +664,6 @@ function HeatMap({ articles, onRegion }) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [hoveredLine, setHoveredLine] = useState(null);
   const [continentFilter, setContinentFilter] = useState("all");
-  const [showLegend, setShowLegend] = useState(false);
 
   // Build city counts and connection lines from articles
   const cityCount = {};
@@ -875,71 +874,102 @@ function HeatMap({ articles, onRegion }) {
 
   return (
     <div>
-      {/* Header row */}
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}>
-        <div>
-          <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 2px",letterSpacing:"-0.02em"}}>World News Map</h2>
-          <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>
-            Tap a dot to see stories · dashed lines link locations in the same story
-          </p>
-        </div>
-        <button onClick={()=>setShowLegend(v=>!v)} style={{
-          ...glassBtn(showLegend), padding:"6px 12px", fontSize:12, borderRadius:20,
-          flexShrink:0, marginTop:2,
-        }}>
-          {showLegend ? "✕ Key" : "? Key"}
-        </button>
-      </div>
-
-      {/* Legend panel */}
-      {showLegend && (
-        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"14px 16px",marginBottom:12,animation:"tab-in 0.18s ease"}}>
-          <p style={{fontFamily:F.text,fontSize:11,fontWeight:700,color:C.orange,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px"}}>Map Key</p>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:14,height:14,borderRadius:"50%",background:C.orange,border:"2px solid white",boxShadow:"0 0 0 3px "+C.orange+"33",flexShrink:0}}/>
-              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}>City dot — size shows how many stories mention that location</span>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <svg width="32" height="10" style={{flexShrink:0}}><line x1="0" y1="5" x2="32" y2="5" stroke={C.left} strokeWidth="1.5" strokeDasharray="4,3"/></svg>
-              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}><span style={{color:C.left,fontWeight:600}}>Blue dashed</span> — left-leaning source connects these locations</span>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <svg width="32" height="10" style={{flexShrink:0}}><line x1="0" y1="5" x2="32" y2="5" stroke={C.center} strokeWidth="1.5" strokeDasharray="4,3"/></svg>
-              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}><span style={{color:C.center,fontWeight:600}}>Orange dashed</span> — center source connects these locations</span>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <svg width="32" height="10" style={{flexShrink:0}}><line x1="0" y1="5" x2="32" y2="5" stroke={C.right} strokeWidth="1.5" strokeDasharray="4,3"/></svg>
-              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}><span style={{color:C.right,fontWeight:600}}>Red dashed</span> — right-leaning source connects these locations</span>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontFamily:F.text,fontSize:13,fontWeight:700,color:C.text,flexShrink:0}}>3</span>
-              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}>Number inside the dot = story count for that city</span>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Header */}
+      <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 12px",letterSpacing:"-0.02em"}}>World News Map</h2>
 
       {/* Continent filter tabs */}
-      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:8,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
+      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:10,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
         {CONTINENT_FILTERS.map(f => (
           <button key={f.id} onClick={()=>setContinentFilter(f.id)} style={{
             ...glassBtn(continentFilter===f.id),
-            padding:"7px 13px", fontSize:12, borderRadius:20, flexShrink:0, whiteSpace:"nowrap",
+            padding:"7px 14px", fontSize:12, borderRadius:20, flexShrink:0, whiteSpace:"nowrap",
             fontWeight: continentFilter===f.id ? 600 : 400,
+            color: continentFilter===f.id ? C.text : C.muted,
           }}>{f.label}</button>
         ))}
       </div>
 
-      <div ref={mapRef} style={{width:"100%",height:400,borderRadius:20,overflow:"hidden",marginBottom:12,border:`1px solid ${C.border}`}}/>
+      <div ref={mapRef} style={{width:"100%",height:400,borderRadius:16,overflow:"hidden",marginBottom:0,border:`1px solid ${C.border}`}}/>
+
+      {/* ── MAP LEGEND — Apple News style, always visible below map ── */}
+      <div style={{
+        background:C.surface, borderRadius:"0 0 16px 16px",
+        borderLeft:`1px solid ${C.border}`, borderRight:`1px solid ${C.border}`,
+        borderBottom:`1px solid ${C.border}`,
+        padding:"14px 16px", marginBottom:16,
+      }}>
+        <p style={{
+          fontFamily:F.text, fontSize:10, fontWeight:700, color:C.muted,
+          letterSpacing:"0.09em", textTransform:"uppercase", margin:"0 0 12px",
+        }}>Map Key</p>
+        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px 16px"}}>
+
+          {/* Dot */}
+          <div style={{display:"flex", alignItems:"center", gap:8}}>
+            <div style={{position:"relative", width:20, height:20, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center"}}>
+              <div style={{width:20, height:20, borderRadius:"50%", background:C.orange+"22", position:"absolute"}}/>
+              <div style={{width:12, height:12, borderRadius:"50%", background:C.orange, border:"2px solid white"}}/>
+            </div>
+            <div>
+              <p style={{fontFamily:F.text, fontSize:11, fontWeight:600, color:C.text, margin:0}}>City dot</p>
+              <p style={{fontFamily:F.text, fontSize:10, color:C.muted, margin:0, lineHeight:1.4}}>Size = story volume</p>
+            </div>
+          </div>
+
+          {/* Number */}
+          <div style={{display:"flex", alignItems:"center", gap:8}}>
+            <div style={{width:20, height:20, borderRadius:"50%", background:C.orange, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0}}>
+              <span style={{fontFamily:F.text, fontSize:10, fontWeight:700, color:"#fff"}}>4</span>
+            </div>
+            <div>
+              <p style={{fontFamily:F.text, fontSize:11, fontWeight:600, color:C.text, margin:0}}>Story count</p>
+              <p style={{fontFamily:F.text, fontSize:10, color:C.muted, margin:0, lineHeight:1.4}}>Stories in that city</p>
+            </div>
+          </div>
+
+          {/* Left line */}
+          <div style={{display:"flex", alignItems:"center", gap:8}}>
+            <svg width="28" height="14" style={{flexShrink:0}}>
+              <line x1="0" y1="7" x2="28" y2="7" stroke={C.left} strokeWidth="2" strokeDasharray="4,3"/>
+            </svg>
+            <div>
+              <p style={{fontFamily:F.text, fontSize:11, fontWeight:600, color:C.left, margin:0}}>Left</p>
+              <p style={{fontFamily:F.text, fontSize:10, color:C.muted, margin:0, lineHeight:1.4}}>Left-leaning source</p>
+            </div>
+          </div>
+
+          {/* Center line */}
+          <div style={{display:"flex", alignItems:"center", gap:8}}>
+            <svg width="28" height="14" style={{flexShrink:0}}>
+              <line x1="0" y1="7" x2="28" y2="7" stroke={C.center} strokeWidth="2" strokeDasharray="4,3"/>
+            </svg>
+            <div>
+              <p style={{fontFamily:F.text, fontSize:11, fontWeight:600, color:C.center, margin:0}}>Center</p>
+              <p style={{fontFamily:F.text, fontSize:10, color:C.muted, margin:0, lineHeight:1.4}}>Center source</p>
+            </div>
+          </div>
+
+          {/* Right line — spans full width */}
+          <div style={{display:"flex", alignItems:"center", gap:8, gridColumn:"1/-1"}}>
+            <svg width="28" height="14" style={{flexShrink:0}}>
+              <line x1="0" y1="7" x2="28" y2="7" stroke={C.right} strokeWidth="2" strokeDasharray="4,3"/>
+            </svg>
+            <div>
+              <p style={{fontFamily:F.text, fontSize:11, fontWeight:600, color:C.right, margin:0}}>Right</p>
+              <p style={{fontFamily:F.text, fontSize:10, color:C.muted, margin:0, lineHeight:1.4}}>Right-leaning source · Dashed lines connect cities mentioned in the same story</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
       {!mapLoaded && <div style={{display:"flex",gap:10,alignItems:"center",justifyContent:"center",padding:"20px 0"}}><Spinner/><span style={{fontFamily:F.text,fontSize:13,color:C.muted}}>Loading map…</span></div>}
 
       {/* City panel */}
       {selected?.type === "city" && selectedArticles.length > 0 && (
         <div style={{marginBottom:16}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <p style={{fontFamily:F.display,fontSize:16,fontWeight:700,color:C.text,margin:0}}>📍 {selected.name} — {selectedArticles.length} {selectedArticles.length===1?"story":"stories"}</p>
-            <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.muted}}>✕</button>
+            <p style={{fontFamily:F.display,fontSize:16,fontWeight:700,color:C.text,margin:0}}>{selected.name} — {selectedArticles.length} {selectedArticles.length===1?"story":"stories"}</p>
+            <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.muted}}>×</button>
           </div>
           {selectedArticles.slice(0,5).map((a,i)=>(
             <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:8,overflow:"hidden",borderLeft:`3px solid ${leanColor(a.lean)}`}}>
@@ -964,7 +994,7 @@ function HeatMap({ articles, onRegion }) {
             <p style={{fontFamily:F.text,fontSize:12,fontWeight:600,color:C.muted,margin:0}}>
               {selected.conn.from.name} ↔ {selected.conn.to.name}
             </p>
-            <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",color:C.muted}}>✕</button>
+            <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",color:C.muted}}>×</button>
           </div>
           <p style={{fontFamily:F.text,fontSize:14,fontWeight:600,color:C.text,margin:"0 0 6px",lineHeight:1.35}}>{decodeHTML(selected.conn.article.headline)}</p>
           <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{selected.conn.article.source} · <span style={{color:selected.conn.color,fontWeight:600}}>{selected.conn.article.lean}</span></p>
@@ -1070,7 +1100,7 @@ function DNATree({ articles }) {
             onKeyDown={e=>{if(e.key==="Enter"&&inputVal.trim())traceDNA(inputVal);}}
             placeholder="Type a headline or topic…"
             style={{flex:1,background:"transparent",border:"none",padding:"12px 0",fontSize:14,color:C.text,outline:"none",fontFamily:F.text}}/>
-          {inputVal&&<button onClick={()=>setInputVal("")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13}}>✕</button>}
+          {inputVal&&<button onClick={()=>setInputVal("")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13}}>×</button>}
         </div>
         <button onClick={()=>inputVal.trim()&&traceDNA(inputVal)} disabled={loading||!inputVal.trim()}
           style={{background:"#E8956D",border:"none",borderRadius:14,padding:"0 18px",fontSize:13,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:F.text,opacity:loading||!inputVal.trim()?0.5:1}}>
@@ -1084,7 +1114,7 @@ function DNATree({ articles }) {
           {articles.slice(0,4).map((a,i)=>(
             <button key={i} onClick={()=>{const q=a.headline.split(" ").slice(0,6).join(" ");setInputVal(q);traceDNA(q);}}
               style={{display:"block",width:"100%",textAlign:"left",background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 14px",cursor:"pointer",fontFamily:F.text,fontSize:13,color:C.text,lineHeight:1.4,marginBottom:8}}>
-              🔍 {a.headline.split(" ").slice(0,9).join(" ")}…
+              {a.headline.split(" ").slice(0,9).join(" ")}…
             </button>
           ))}
         </div>
@@ -1287,13 +1317,13 @@ function DNATree({ articles }) {
                     {selWarn&&<span style={{fontSize:11,color:C.breaking,fontWeight:600}}>⚠ Spin detected</span>}
                   </div>
                 </div>
-                <button onClick={()=>setSelectedId(null)} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:14,padding:"2px 6px"}}>✕</button>
+                <button onClick={()=>setSelectedId(null)} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:14,padding:"2px 6px"}}>×</button>
               </div>
               <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:"0 0 12px",lineHeight:1.6}}>{selNode.text}</p>
               <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:pOpen?12:0}}>
-                <button onClick={e=>togProv(e,selectedId)} style={{fontSize:11,fontFamily:F.text,color:pOpen?C.accent:C.muted,background:pOpen?C.accentSoft:C.surface,border:`1px solid ${pOpen?C.accent+"40":C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>{pOpen?"Hide":"🔍 Verify"}</button>
+                <button onClick={e=>togProv(e,selectedId)} style={{fontSize:11,fontFamily:F.text,color:pOpen?C.accent:C.muted,background:pOpen?C.accentSoft:C.surface,border:`1px solid ${pOpen?C.accent+"40":C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>{pOpen?"Hide":"Verify"}</button>
                 {selNode.url&&<button onClick={e=>{e.stopPropagation();window.open(selNode.url,"_blank","noopener,noreferrer");}} style={{fontSize:11,fontFamily:F.text,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>Article ↗</button>}
-                {selNode.wayback&&<button onClick={e=>{e.stopPropagation();window.open(selNode.wayback,"_blank","noopener,noreferrer");}} style={{fontSize:11,fontFamily:F.text,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>📦 Archive</button>}
+                {selNode.wayback&&<button onClick={e=>{e.stopPropagation();window.open(selNode.wayback,"_blank","noopener,noreferrer");}} style={{fontSize:11,fontFamily:F.text,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}>Archive</button>}
               </div>
               {pOpen&&(
                 <div style={{background:C.surface,borderRadius:10,padding:"14px 16px",border:`1px solid ${selWarn?C.breaking+"30":C.border}`}}>
@@ -1306,7 +1336,7 @@ function DNATree({ articles }) {
                     <p style={{fontFamily:F.text,fontSize:12,color:selWarn?C.breaking:C.sub,margin:0,lineHeight:1.6,background:selWarn?C.breaking+"08":"transparent",borderRadius:6,padding:selWarn?"6px 10px":0}}>{selNode.quoteChange.replace("⚠ ","")}</p>
                   </div>}
                   {selNode.wayback&&<div style={{marginTop:10,paddingTop:8,borderTop:`1px solid ${C.divider}`,display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:11,color:C.muted,fontFamily:F.text}}>📦 Archived:</span>
+                    <span style={{fontSize:11,color:C.muted,fontFamily:F.text}>Archived:</span>
                     <span onClick={e=>{e.stopPropagation();window.open(selNode.wayback,"_blank","noopener,noreferrer");}} style={{fontSize:11,color:C.accent,fontFamily:F.text,cursor:"pointer",textDecoration:"underline"}}>Wayback Machine ↗</span>
                   </div>}
                 </div>
@@ -1355,7 +1385,7 @@ function FactSheet({ article, onClose }) {
           <h3 style={{fontFamily:F.display,fontSize:20,fontWeight:700,color:C.text,margin:0,letterSpacing:"-0.02em"}}>Fact Check</h3>
           <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:"2px 0 0"}}>Clarion AI Analysis</p>
         </div>
-        <button onClick={onClose} style={{background:C.surface,border:"none",borderRadius:99,width:30,height:30,fontSize:14,cursor:"pointer",color:C.muted}}>✕</button>
+        <button onClick={onClose} style={{background:C.surface,border:"none",borderRadius:99,width:30,height:30,fontSize:14,cursor:"pointer",color:C.muted}}>×</button>
       </div>
       <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:"0 0 20px",lineHeight:1.5,fontStyle:"italic",paddingLeft:12,borderLeft:`2px solid ${C.divider}`}}>"{article.headline}"</p>
       {loading?(
@@ -1382,7 +1412,7 @@ function FactSheet({ article, onClose }) {
             <p style={{fontFamily:F.text,fontSize:10,fontWeight:600,color:C.muted,margin:"0 0 4px",letterSpacing:"0.06em"}}>MISSING CONTEXT</p>
             <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:0,lineHeight:1.5}}>{res.missing_context}</p>
           </div>
-          <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:0,lineHeight:1.5}}>💡 {res.recommendation}</p>
+          <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:0,lineHeight:1.5}>{res.recommendation}</p>
         </>
       )}
     </Sheet>
@@ -1419,7 +1449,7 @@ function JournalistSheet({ source, onClose }) {
           </div>
           <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{j.beat}</p>
         </div>
-        <button onClick={onClose} style={{background:C.surface,border:"none",borderRadius:99,width:30,height:30,fontSize:14,cursor:"pointer",color:C.muted}}>✕</button>
+        <button onClick={onClose} style={{background:C.surface,border:"none",borderRadius:99,width:30,height:30,fontSize:14,cursor:"pointer",color:C.muted}}>×</button>
       </div>
       <div style={{display:"flex",gap:12,marginBottom:22}}>
         {[["Trust Score",j.trustScore,trustColor,j.trustScore>=85?"High Trust":j.trustScore>=65?"Moderate Trust":"Low Trust"],["Accuracy",j.accuracyScore,j.accuracyScore>=85?"#3A9E6A":"#5CB87A",j.accuracyScore>=85?"Highly Accurate":"Generally Accurate"]].map(([label,score,color,sublabel])=>(
@@ -1484,7 +1514,7 @@ function PublishSheet({ onClose }) {
           <h3 style={{fontFamily:F.display,fontSize:20,fontWeight:700,color:C.text,margin:0,letterSpacing:"-0.02em"}}>Write</h3>
           <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:"2px 0 0"}}>Publish your perspective to the community</p>
         </div>
-        <button onClick={onClose} style={{background:C.surface,border:"none",borderRadius:99,width:30,height:30,fontSize:14,cursor:"pointer",color:C.muted}}>✕</button>
+        <button onClick={onClose} style={{background:C.surface,border:"none",borderRadius:99,width:30,height:30,fontSize:14,cursor:"pointer",color:C.muted}}>×</button>
       </div>
       {!done?(
         <>
@@ -1520,19 +1550,19 @@ const ONBOARDING_SLIDES = [
     color: C.orange,
   },
   {
-    icon: "⚖",
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>,
     title: "Know Your Bias",
     body: "Clarion tracks which perspectives you read and shows your Balance Score over time. See when you're drifting into an echo chamber.",
     color: C.left,
   },
   {
-    icon: "🧬",
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>,
     title: "Trace Every Story",
     body: "Use Story DNA to see who broke a story, how it spread, and where spin was introduced across the political spectrum.",
     color: C.right,
   },
   {
-    icon: "★",
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M5 4h14v17l-7-4-7 4V4z"/></svg>,
     title: "Follow Topics",
     body: "Pick the topics you care about most and Clarion will surface those stories first — while still keeping your feed balanced.",
     color: C.accent,
@@ -1885,7 +1915,7 @@ class ErrorBoundary extends Component {
           background:"#FFFFFF", padding:32, textAlign:"center",
           fontFamily:"-apple-system, sans-serif",
         }}>
-          <div style={{fontSize:40, marginBottom:16}}>📰</div>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9A9689" strokeWidth="1.4" strokeLinecap="round" style={{display:"block",margin:"0 auto 16px",opacity:0.5}}><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18M3 14h6"/></svg>
           <p style={{fontSize:22, fontWeight:700, color:"#1A1A18", margin:"0 0 8px"}}>Something went wrong</p>
           <p style={{fontSize:14, color:"#9A9689", margin:"0 0 24px", lineHeight:1.6, maxWidth:300}}>
             Clarion hit an unexpected error. Your saved preferences are intact.
@@ -2431,7 +2461,7 @@ function ClarionFinal() {
                 }}
               />
               <button onClick={()=>{ setSearch(""); setSearchInput(""); setShowSearch(false); }}
-                style={{background:"none", border:"none", color:C.muted, cursor:"pointer", fontSize:15, lineHeight:1}}>✕</button>
+                style={{background:"none", border:"none", color:C.muted, cursor:"pointer", fontSize:15, lineHeight:1}}>×</button>
             </div>
           )}
         </div>
@@ -2481,7 +2511,7 @@ function ClarionFinal() {
                     background:C.surface,
                     color:C.muted, boxShadow:"none",
                   }}>
-                    📍 {regionFilter} ✕
+                    {regionFilter} ✕
                   </button>
                 )}
               </div>
@@ -2589,11 +2619,11 @@ function ClarionFinal() {
                                   {a.url && <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:"7px 14px",fontSize:12,fontWeight:600}}>Read ↗</button>}
                                   <button onClick={()=>{ const adding=!bookmarks.includes(a.id); setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a,adding); if(navigator.vibrate) navigator.vibrate(adding?14:6); }}
                                     style={{...glassBtn(bookmarks.includes(a.id)),padding:"7px 12px",fontSize:12}}>
-                                    {bookmarks.includes(a.id)?"★ Saved":"☆ Save"}
+                                    {bookmarks.includes(a.id)?`${<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M5 4h14v17l-7-4-7 4V4z"/></svg>}Saved`:`${<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M5 4h14v17l-7-4-7 4V4z"/></svg>}Save`}
                                   </button>
                                   <button onClick={()=>setVerifying(a)} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}>Fact Check</button>
-                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}>⚖ Compare</button>
-                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}>🧬 DNA</button>
+                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
+                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
                                 </div>
                               </div>
                             )}
@@ -2664,10 +2694,10 @@ function ClarionFinal() {
                                     {a.url && <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:"6px 12px",fontSize:11,fontWeight:600}}>Read ↗</button>}
                                     <button onClick={()=>{ const adding=!bookmarks.includes(a.id); setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a,adding); if(navigator.vibrate) navigator.vibrate(adding?14:6); }}
                                       style={{...glassBtn(bookmarks.includes(a.id)),padding:"6px 10px",fontSize:11}}>
-                                      {bookmarks.includes(a.id)?"★":"☆"} Save
+                                      {bookmarks.includes(a.id)?"" } Save
                                     </button>
-                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}>⚖ Compare</button>
-                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}>🧬 DNA</button>
+                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
+                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
                                   </div>
                                 </div>
                               )}
@@ -2829,7 +2859,7 @@ function ClarionFinal() {
             <div style={{background:C.surface,borderRadius:16,overflow:"hidden",marginBottom:28}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",borderBottom:`1px solid ${C.divider}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <span style={{fontSize:18}}>{darkMode?"☀️":"🌙"}</span>
+                  <span style={{fontSize:18}}>{darkMode ? (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle"}}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>) : (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle"}}><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>)}</span>
                   <div>
                     <p style={{fontFamily:F.text,fontSize:14,fontWeight:600,color:C.text,margin:0}}>{darkMode?"Light Mode":"Dark Mode"}</p>
                     <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{darkMode?"Switch to light theme":"Switch to dark theme"}</p>
@@ -2963,11 +2993,11 @@ function ClarionFinal() {
                 <p style={{fontFamily:F.text,fontSize:10,fontWeight:700,color:C.orange,
                   letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 14px"}}>How It Works</p>
                 {[
-                  { icon:"◀ ● ▶", title:"Lean Ratings",    body:"Every story tagged left, center, or right based on the outlet's historical bias." },
-                  { icon:"🧬",    title:"Story DNA",        body:"Trace how a story evolves across sources and flag spin or missing context." },
-                  { icon:"🗺",    title:"World Map",        body:"Stories geo-tagged on a live map with connection lines between related locations." },
-                  { icon:"⚖",    title:"Compare Coverage", body:"See how left, center, and right outlets frame the same headline differently." },
-                  { icon:"📊",    title:"Balance Meter",    body:"Track your reading diet across the political spectrum." },
+                  { icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.orange} strokeWidth="1.8" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>, title:"Lean Ratings",    body:"Every story tagged left, center, or right based on the outlet's historical bias." },
+                  { icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.orange} strokeWidth="1.8" strokeLinecap="round"><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>, title:"Story DNA",        body:"Trace how a story evolves across sources and flag spin or missing context." },
+                  { icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.orange} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>, title:"World Map",        body:"Stories geo-tagged on a live map with connection lines between related locations." },
+                  { icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.orange} strokeWidth="1.8" strokeLinecap="round"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>, title:"Compare Coverage", body:"See how left, center, and right outlets frame the same headline differently." },
+                  { icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.orange} strokeWidth="1.8" strokeLinecap="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>, title:"Balance Meter",    body:"Track your reading diet across the political spectrum." },
                 ].map(({icon,title,body}) => (
                   <div key={title} style={{display:"flex",gap:12,marginBottom:12,alignItems:"flex-start"}}>
                     <div style={{width:34,height:34,borderRadius:10,background:C.accentSoft,
@@ -3005,7 +3035,6 @@ function ClarionFinal() {
 
           </div>
         )}
-}
 
       </div>
 
