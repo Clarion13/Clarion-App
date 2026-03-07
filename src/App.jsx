@@ -83,8 +83,8 @@ function decodeHTML(str) {
     .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ").replace(/&ndash;/g, "–").replace(/&mdash;/g, "—")
-    .replace(/&lsquo;/g, "'").replace(/&rsquo;/g, "'")
-    .replace(/&ldquo;/g, """).replace(/&rdquo;/g, """)
+    .replace(/&lsquo;/g, "\u2018").replace(/&rsquo;/g, "\u2019")
+    .replace(/&ldquo;/g, "\u201c").replace(/&rdquo;/g, "\u201d")
     .replace(/&hellip;/g, "…").replace(/&bull;/g, "•")
     .replace(/<[^>]+>/g, "").trim();
 }
