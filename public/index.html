@@ -2,10 +2,43 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Clarion</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!-- PWA / App identity -->
+    <meta name="application-name" content="Clarion." />
+    <meta name="theme-color" content="#E8956D" />
+    <meta name="description" content="News from every angle. See the full picture with left, center, and right coverage side by side." />
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Clarion." />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+
+    <!-- Open Graph (for sharing) -->
+    <meta property="og:title" content="Clarion. — Loud & Clear" />
+    <meta property="og:description" content="News from every angle. Left, center, and right coverage side by side." />
+    <meta property="og:image" content="/icon-512.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://theclarion.app" />
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Clarion. — Loud & Clear" />
+    <meta name="twitter:description" content="News from every angle." />
+    <meta name="twitter:image" content="/icon-512.png" />
+
+    <title>Clarion.</title>
   </head>
   <body>
+    <noscript>You need to enable JavaScript to run Clarion.</noscript>
     <div id="root"></div>
   </body>
 </html>
