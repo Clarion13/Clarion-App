@@ -235,7 +235,7 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
             )}
             <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(saved?6:14); const adding=!saved; setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a, adding); }} style={{
               ...glassBtn(saved), padding:"7px 12px", fontSize:12,
-            }}>{saved?`${<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M5 4h14v17l-7-4-7 4V4z"/></svg>}Saved`:`${<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M5 4h14v17l-7-4-7 4V4z"/></svg>}Save`}</button>
+            }}>{saved?"Saved" : "Save"}</button>
             <button onClick={()=>setVerifying(a)} style={{
               ...glassBtn(false), padding:"7px 12px", fontSize:12,
             }}>Fact Check</button>
@@ -2619,11 +2619,11 @@ function ClarionFinal() {
                                   {a.url && <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:"7px 14px",fontSize:12,fontWeight:600}}>Read ↗</button>}
                                   <button onClick={()=>{ const adding=!bookmarks.includes(a.id); setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a,adding); if(navigator.vibrate) navigator.vibrate(adding?14:6); }}
                                     style={{...glassBtn(bookmarks.includes(a.id)),padding:"7px 12px",fontSize:12}}>
-                                    {bookmarks.includes(a.id)?`${<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M5 4h14v17l-7-4-7 4V4z"/></svg>}Saved`:`${<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M5 4h14v17l-7-4-7 4V4z"/></svg>}Save`}
+                                    {bookmarks.includes(a.id)?"Saved" : "Save"}
                                   </button>
                                   <button onClick={()=>setVerifying(a)} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}>Fact Check</button>
-                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
-                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
+                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
+                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
                                 </div>
                               </div>
                             )}
@@ -2696,8 +2696,8 @@ function ClarionFinal() {
                                       style={{...glassBtn(bookmarks.includes(a.id)),padding:"6px 10px",fontSize:11}}>
                                       {bookmarks.includes(a.id)?"" } Save
                                     </button>
-                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
-                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
+                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
+                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
                                   </div>
                                 </div>
                               )}
