@@ -1933,6 +1933,21 @@ function ClarionFinal() {
     setHistory([]);
   };
 
+  // ── REGISTER SERVICE WORKER ──
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js")
+        .then(reg => console.log("[Clarion] SW registered:", reg.scope))
+        .catch(err => console.warn("[Clarion] SW failed:", err));
+    }
+    // Handle deep links from PWA shortcuts e.g. /?tab=map
+    const params = new URLSearchParams(window.location.search);
+    const deepTab = params.get("tab");
+    if (deepTab && ["feed","map","balance","dna","profile","about"].includes(deepTab)) {
+      setTab(deepTab);
+    }
+  }, []);
+
   const CACHE_KEY = "clarion_feed_v3";
   const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
