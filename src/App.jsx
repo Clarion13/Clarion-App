@@ -269,32 +269,51 @@ function BiasGauge({ history, allArticles }) {
     return a;
   },{left:0,center:0,right:0});
   const total=(counts.left||0)+(counts.center||0)+(counts.right||0)||1;
+  const hasData = history.length > 0;
   const score=((counts.right||0)-(counts.left||0))/total;
   const pct=((score+1)/2)*100;
-  const note = score<-0.3?"You've been reading mostly left-leaning sources. Consider mixing in some centrist perspectives."
-             : score>0.3 ?"You've been reading mostly right-leaning sources. Consider mixing in some centrist perspectives."
-             : "You're reading a well-balanced mix across the political spectrum.";
+  const label = score < -0.3 ? "Leaning Left" : score > 0.3 ? "Leaning Right" : "Well Balanced";
+  const labelColor = score < -0.3 ? C.left : score > 0.3 ? C.right : C.center;
+  const note = score < -0.3 ? "Try mixing in some center or right-leaning sources."
+             : score >  0.3 ? "Try mixing in some center or left-leaning sources."
+             : "You're reading a healthy mix across the spectrum.";
   return (
-    <div>
-      <h2 style={{ fontFamily:F.display, fontSize:22, fontWeight:700, color:C.text, margin:"0 0 4px", letterSpacing:"-0.02em" }}>Echo Chamber Meter</h2>
-      <p style={{ fontFamily:F.text, fontSize:14, color:C.muted, margin:"0 0 28px" }}>Your reading balance, updated in real time.</p>
-      <div style={{ position:"relative", height:6, borderRadius:99, background:`linear-gradient(to right,${C.left},${C.center},${C.right})`, marginBottom:10, opacity:0.55 }}>
-        <div style={{ position:"absolute", top:"50%", transform:"translate(-50%,-50%)", width:20, height:20, borderRadius:"50%", background:C.bg, border:`2.5px solid ${C.text}`, boxShadow:"0 2px 8px rgba(0,0,0,0.15)", left:`${pct}%`, transition:"left 0.6s cubic-bezier(.34,1.56,.64,1)" }}/>
+    <div style={{marginBottom:28}}>
+      <div style={{marginBottom:20}}>
+        <div style={{position:"relative", height:8, borderRadius:99, background:`linear-gradient(to right,${C.left},${C.center},${C.right})`, marginBottom:8}}>
+          <div style={{
+            position:"absolute", top:"50%", transform:"translate(-50%,-50%)",
+            width:22, height:22, borderRadius:"50%",
+            background:C.bg, border:`3px solid ${labelColor}`,
+            boxShadow:`0 2px 10px ${labelColor}55`,
+            left:`${pct}%`, transition:"left 0.7s cubic-bezier(.34,1.56,.64,1)",
+          }}/>
+        </div>
+        <div style={{display:"flex", justifyContent:"space-between", fontFamily:F.text, fontSize:10, fontWeight:600, letterSpacing:"0.08em"}}>
+          <span style={{color:C.left}}>LEFT</span>
+          <span style={{color:C.center}}>CENTER</span>
+          <span style={{color:C.right}}>RIGHT</span>
+        </div>
       </div>
-      <div style={{ display:"flex", justifyContent:"space-between", fontFamily:F.text, fontSize:10, color:C.muted, fontWeight:600, letterSpacing:"0.08em", marginBottom:28 }}>
-        <span>LEFT</span><span>CENTER</span><span>RIGHT</span>
+      <div style={{background:C.surface, borderRadius:14, padding:"16px 18px", display:"flex", alignItems:"center", gap:14}}>
+        <div style={{width:10, height:10, borderRadius:"50%", background:labelColor, flexShrink:0, boxShadow:`0 0 0 3px ${labelColor}22`}}/>
+        <div style={{flex:1}}>
+          <p style={{fontFamily:F.display, fontSize:15, fontWeight:700, color:C.text, margin:"0 0 2px"}}>{hasData ? label : "No data yet"}</p>
+          <p style={{fontFamily:F.text, fontSize:12, color:C.muted, margin:0, lineHeight:1.5}}>
+            {hasData ? note : "Read stories in your feed to start tracking."}
+          </p>
+        </div>
       </div>
-      <div style={{ display:"flex", gap:10, marginBottom:20 }}>
-        {[["Left",counts.left||0,C.left],["Center",counts.center||0,C.center],["Right",counts.right||0,C.right]].map(([l,v,c])=>(
-          <div key={l} style={{ flex:1, background:C.surface, borderRadius:12, padding:"16px 10px", textAlign:"center" }}>
-            <div style={{ fontFamily:F.display, fontSize:26, fontWeight:700, color:c, letterSpacing:"-0.02em" }}>{v}</div>
-            <div style={{ fontFamily:F.text, fontSize:11, color:C.muted, marginTop:4 }}>{l}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ background:C.surface, borderRadius:12, padding:"14px 16px", fontSize:14, color:C.sub, fontFamily:F.text, lineHeight:1.6 }}>
-        {history.length===0 ? "Open stories in your feed to start tracking balance." : note}
-      </div>
+      {hasData && (
+        <div style={{display:"flex", gap:8, marginTop:10}}>
+          {[["Left",counts.left||0,C.left],["Center",counts.center||0,C.center],["Right",counts.right||0,C.right]].map(([l,v,c])=>(
+            <div key={l} style={{flex:1, background:C.surface, borderRadius:12, padding:"12px 8px", textAlign:"center"}}>
+              <div style={{fontFamily:F.display, fontSize:22, fontWeight:700, color:c, letterSpacing:"-0.02em"}}>{v}</div>
+              <div style={{fontFamily:F.text, fontSize:10, color:C.muted, marginTop:2, letterSpacing:"0.05em"}}>{l.toUpperCase()}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -2784,55 +2803,42 @@ function ClarionFinal() {
 
         {tab==="balance" && (
           <div style={{paddingTop:20}}>
-            <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>Balance</h2>
-            <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:"0 0 20px",lineHeight:1.5}}>Track your reading diet and stay informed across the spectrum.</p>
+            <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>Balance Meter</h2>
+            <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 24px",lineHeight:1.5}}>Based on the stories you have opened. Read across the spectrum to keep the needle centered.</p>
 
             <BiasGauge history={history} allArticles={all}/>
 
-            {/* Balance trend chart */}
-            {/* Topic following */}
-            <div style={{marginBottom:24}}>
-              <h3 style={{fontFamily:F.display,fontSize:17,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Your Topics</h3>
-              <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 12px"}}>Followed topics appear first in your feed.</p>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {CATS.filter(c=>c!=="All").map(cat=>{
-                  const active = followedTopics.includes(cat);
-                  return (
-                    <button key={cat} onClick={()=>setFollowedTopics(v=>active?v.filter(x=>x!==cat):[...v,cat])}
-                      style={{
-                        padding:"8px 14px", fontSize:13, fontWeight:active?600:400,
-                        fontFamily:F.text, borderRadius:20, cursor:"pointer",
-                        background: active ? C.orange : C.surface,
-                        color: active ? "#fff" : C.sub,
-                        border: `1px solid ${active ? C.orange : C.border}`,
-                        transition:"all 0.15s",
-                      }}>
-                      {active ? "✓ " : ""}{cat}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Suggested for balance */}
-            {history.length>0&&(
-              <>
-                <h3 style={{fontFamily:F.display,fontSize:17,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Suggested for Balance</h3>
-                <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 16px"}}>Stories from perspectives you haven't read yet.</p>
-                {all.filter(a=>!history.includes(a.id)).slice(0,5).map(a=>(
-                  <div key={a.id} onClick={()=>{ onRead(a.id); setTab("feed"); }} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:`1px solid ${C.divider}`,cursor:"pointer",alignItems:"flex-start"}}>
-                    <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:leanColor(a.lean),flexShrink:0}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <p style={{fontFamily:F.text,fontSize:14,color:C.text,fontWeight:500,margin:"0 0 3px",lineHeight:1.35}}>{decodeHTML(a.headline)}</p>
-                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                        <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>{a.source}</p>
-                        <span style={{fontSize:10,color:leanColor(a.lean),fontWeight:600,background:leanColor(a.lean)+"18",borderRadius:10,padding:"1px 6px",fontFamily:F.text}}>{a.lean}</span>
+            {history.length > 0 && (()=>{
+              const unread = all.filter(a => !history.includes(a.id));
+              const leftCount  = history.filter(id=>{ const a=all.find(x=>x.id===id); return a && a.lean==="left"; }).length;
+              const rightCount = history.filter(id=>{ const a=all.find(x=>x.id===id); return a && a.lean==="right"; }).length;
+              const wantedLean = leftCount > rightCount ? "right" : leftCount < rightCount ? "left" : null;
+              const suggestions = wantedLean
+                ? unread.filter(a=>a.lean===wantedLean).slice(0,4)
+                : unread.slice(0,4);
+              if(!suggestions.length) return null;
+              return (
+                <div>
+                  <p style={{fontFamily:F.display,fontSize:15,fontWeight:700,color:C.text,margin:"0 0 4px"}}>Suggested for you</p>
+                  <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:"0 0 14px"}}>
+                    {wantedLean ? "Stories from " + wantedLean + "-leaning sources to balance your feed." : "Stories you have not read yet."}
+                  </p>
+                  {suggestions.map(a=>(
+                    <div key={a.id} onClick={()=>{ onRead(a.id); setTab("feed"); }}
+                      style={{display:"flex",gap:12,padding:"13px 0",borderBottom:"1px solid " + C.divider,cursor:"pointer",alignItems:"flex-start"}}>
+                      <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:leanColor(a.lean),flexShrink:0,minHeight:36}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <p style={{fontFamily:F.text,fontSize:13,fontWeight:500,color:C.text,margin:"0 0 4px",lineHeight:1.4}}>{decodeHTML(a.headline)}</p>
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <span style={{fontFamily:F.text,fontSize:11,color:C.muted}}>{a.source}</span>
+                          <span style={{fontSize:10,color:leanColor(a.lean),fontWeight:600,background:leanColor(a.lean)+"18",borderRadius:10,padding:"1px 6px",fontFamily:F.text}}>{a.lean}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </>
-            )}
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
