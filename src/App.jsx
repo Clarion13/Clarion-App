@@ -241,7 +241,7 @@ function ArticleCard({ a, onRead, bookmarks, setBookmarks, setVerifying, onJourn
             }}>Fact Check</button>
             {onCompare && <button onClick={e=>{ e.stopPropagation(); if(navigator.vibrate) navigator.vibrate(10); onCompare(a); }} style={{
               ...glassBtn(false), padding:"7px 12px", fontSize:12,
-            }><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>}
+            }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>}
           </div>
           <div style={{ display:"flex", gap:8 }}>
             <input value={comment} onChange={e=>setComment(e.target.value)} placeholder="Comment…"
