@@ -384,6 +384,55 @@ const CITIES = [
   {name:"Brasilia",lat:-15.8267,lng:-47.9218},
   {name:"Buenos Aires",lat:-34.6037,lng:-58.3816},
   {name:"Santiago",lat:-33.4489,lng:-70.6693},
+  // More Americas
+  {name:"Lima",lat:-12.0464,lng:-77.0428},
+  {name:"Quito",lat:-0.1807,lng:-78.4678},
+  {name:"Montevideo",lat:-34.9011,lng:-56.1645},
+  {name:"Asuncion",lat:-25.2867,lng:-57.6470},
+  {name:"La Paz",lat:-16.4897,lng:-68.1193},
+  // More Europe
+  {name:"Lisbon",lat:38.7169,lng:-9.1399},
+  {name:"Prague",lat:50.0755,lng:14.4378},
+  {name:"Budapest",lat:47.4979,lng:19.0402},
+  {name:"Bucharest",lat:44.4268,lng:26.1025},
+  {name:"Sofia",lat:42.6977,lng:23.3219},
+  {name:"Belgrade",lat:44.8176,lng:20.4633},
+  // More Middle East
+  {name:"Baghdad",lat:33.3152,lng:44.3661},
+  {name:"Amman",lat:31.9566,lng:35.9456},
+  {name:"Damascus",lat:33.5138,lng:36.2765},
+  {name:"Doha",lat:25.2854,lng:51.5310},
+  {name:"Kuwait City",lat:29.3759,lng:47.9774},
+  {name:"Muscat",lat:23.5880,lng:58.3829},
+  {name:"Sanaa",lat:15.5527,lng:44.2075},
+  // More Africa
+  {name:"Accra",lat:5.6037,lng:-0.1870},
+  {name:"Addis Ababa",lat:9.0249,lng:38.7469},
+  {name:"Dakar",lat:14.7167,lng:-17.4677},
+  {name:"Khartoum",lat:15.5007,lng:32.5599},
+  {name:"Kinshasa",lat:-4.4419,lng:15.2663},
+  {name:"Luanda",lat:-8.8368,lng:13.2343},
+  {name:"Dar es Salaam",lat:-6.7924,lng:39.2083},
+  // More Asia
+  {name:"Bangkok",lat:13.7563,lng:100.5018},
+  {name:"Jakarta",lat:-6.2088,lng:106.8456},
+  {name:"Kuala Lumpur",lat:3.1390,lng:101.6869},
+  {name:"Manila",lat:14.5995,lng:120.9842},
+  {name:"Dhaka",lat:23.8103,lng:90.4125},
+  {name:"Colombo",lat:6.9271,lng:79.8612},
+  {name:"Kathmandu",lat:27.7172,lng:85.3240},
+  {name:"Yangon",lat:16.8661,lng:96.1951},
+  {name:"Hanoi",lat:21.0285,lng:105.8542},
+  {name:"Ho Chi Minh City",lat:10.8231,lng:106.6297},
+  {name:"Ulaanbaatar",lat:47.8864,lng:106.9057},
+  {name:"Tashkent",lat:41.2995,lng:69.2401},
+  {name:"Almaty",lat:43.2220,lng:76.8512},
+  {name:"Baku",lat:40.4093,lng:49.8671},
+  {name:"Yerevan",lat:40.1872,lng:44.5152},
+  {name:"Tbilisi",lat:41.6938,lng:44.8015},
+  // More Oceania
+  {name:"Melbourne",lat:-37.8136,lng:144.9631},
+  {name:"Auckland",lat:-36.8509,lng:174.7645},
 ];
 
 // Keyword map: location name -> keywords that should map to it
@@ -466,6 +515,55 @@ const CITY_KEYWORDS = {
   "Brasilia":         ["brasilia","brazil","brazilian","lula","bolsonaro","sao paulo","amazon rainforest","rio de janeiro"],
   "Buenos Aires":     ["buenos aires","argentina","argentine","milei","peronist","peso crisis"],
   "Santiago":         ["santiago","chile","chilean","boric"],
+  // More Americas
+  "Lima":             ["lima","peru","peruvian"],
+  "Quito":            ["quito","ecuador","ecuadorian"],
+  "Montevideo":       ["montevideo","uruguay","uruguayan"],
+  "Asuncion":         ["asuncion","paraguay","paraguayan"],
+  "La Paz":           ["la paz","bolivia","bolivian"],
+  // More Europe
+  "Lisbon":           ["lisbon","portugal","portuguese"],
+  "Prague":           ["prague","czech","czechia"],
+  "Budapest":         ["budapest","hungary","hungarian","orban"],
+  "Bucharest":        ["bucharest","romania","romanian"],
+  "Sofia":            ["sofia","bulgaria","bulgarian"],
+  "Belgrade":         ["belgrade","serbia","serbian"],
+  // More Middle East
+  "Baghdad":          ["baghdad","iraq","iraqi"],
+  "Amman":            ["amman","jordan","jordanian"],
+  "Damascus":         ["damascus","syria","syrian","assad"],
+  "Doha":             ["doha","qatar","qatari","al jazeera","world cup qatar"],
+  "Kuwait City":      ["kuwait","kuwaiti"],
+  "Muscat":           ["muscat","oman","omani"],
+  "Sanaa":            ["sanaa","yemen","yemeni","houthi"],
+  // More Africa
+  "Accra":            ["accra","ghana","ghanaian"],
+  "Addis Ababa":      ["addis ababa","ethiopia","ethiopian","african union"],
+  "Dakar":            ["dakar","senegal","senegalese"],
+  "Khartoum":         ["khartoum","sudan","sudanese"],
+  "Kinshasa":         ["kinshasa","congo","drc","democratic republic"],
+  "Luanda":           ["luanda","angola","angolan"],
+  "Dar es Salaam":    ["dar es salaam","tanzania","tanzanian"],
+  // More Asia
+  "Bangkok":          ["bangkok","thailand","thai"],
+  "Jakarta":          ["jakarta","indonesia","indonesian"],
+  "Kuala Lumpur":     ["kuala lumpur","malaysia","malaysian"],
+  "Manila":           ["manila","philippines","philippine","marcos"],
+  "Dhaka":            ["dhaka","bangladesh","bangladeshi"],
+  "Colombo":          ["colombo","sri lanka","sri lankan"],
+  "Kathmandu":        ["kathmandu","nepal","nepalese"],
+  "Yangon":           ["yangon","myanmar","burmese","burma"],
+  "Hanoi":            ["hanoi","vietnam","vietnamese"],
+  "Ho Chi Minh City": ["ho chi minh","saigon","vietnam south"],
+  "Ulaanbaatar":      ["ulaanbaatar","mongolia","mongolian"],
+  "Tashkent":         ["tashkent","uzbekistan","uzbek"],
+  "Almaty":           ["almaty","kazakhstan","kazakh"],
+  "Baku":             ["baku","azerbaijan","azerbaijani"],
+  "Yerevan":          ["yerevan","armenia","armenian","nagorno"],
+  "Tbilisi":          ["tbilisi","georgia country","georgian"],
+  // More Oceania
+  "Melbourne":        ["melbourne","victoria australia"],
+  "Auckland":         ["auckland","new zealand","kiwi","ardern"],
 };
 
 // Returns array of all matched city names for an article
@@ -519,18 +617,66 @@ function fuzzyMatchDirect(region) {
 
 const fuzzyMatch = fuzzyMatchDirect;
 
+const CONTINENT_FILTERS = [
+  { id:"all",      label:"🌍 All" },
+  { id:"americas", label:"🌎 Americas" },
+  { id:"europe",   label:"🇪🇺 Europe" },
+  { id:"asia",     label:"🌏 Asia" },
+  { id:"mideast",  label:"🕌 Mid East" },
+  { id:"africa",   label:"🌍 Africa" },
+  { id:"oceania",  label:"🦘 Oceania" },
+];
+
+const CITY_CONTINENT = {
+  "New York":"americas","Los Angeles":"americas","Chicago":"americas","Houston":"americas",
+  "Washington D.C.":"americas","San Francisco":"americas","Seattle":"americas","Miami":"americas",
+  "Boston":"americas","Atlanta":"americas","Dallas":"americas","Denver":"americas",
+  "Las Vegas":"americas","Austin":"americas","Phoenix":"americas","Nashville":"americas",
+  "Portland":"americas","Minneapolis":"americas","Detroit":"americas","Philadelphia":"americas",
+  "San Diego":"americas","Tampa":"americas","Baltimore":"americas","Salt Lake City":"americas",
+  "New Orleans":"americas","Ottawa":"americas","Toronto":"americas","Vancouver":"americas",
+  "Mexico City":"americas","Havana":"americas","Caracas":"americas","Bogota":"americas",
+  "Brasilia":"americas","Buenos Aires":"americas","Santiago":"americas","Lima":"americas",
+  "Quito":"americas","Montevideo":"americas","Asuncion":"americas","La Paz":"americas",
+  "London":"europe","Paris":"europe","Berlin":"europe","Moscow":"europe","Kyiv":"europe",
+  "Brussels":"europe","Rome":"europe","Madrid":"europe","Amsterdam":"europe","Warsaw":"europe",
+  "Stockholm":"europe","Zurich":"europe","Athens":"europe","Vienna":"europe","Lisbon":"europe",
+  "Prague":"europe","Budapest":"europe","Bucharest":"europe","Sofia":"europe","Belgrade":"europe",
+  "Zagreb":"europe","Vilnius":"europe","Riga":"europe","Tallinn":"europe","Helsinki":"europe",
+  "Tel Aviv":"mideast","Gaza":"mideast","Beirut":"mideast","Tehran":"mideast","Riyadh":"mideast",
+  "Dubai":"mideast","Istanbul":"mideast","Cairo":"mideast","Baghdad":"mideast","Amman":"mideast",
+  "Damascus":"mideast","Doha":"mideast","Kuwait City":"mideast","Muscat":"mideast","Sanaa":"mideast",
+  "Nairobi":"africa","Lagos":"africa","Johannesburg":"africa","Accra":"africa","Addis Ababa":"africa",
+  "Dakar":"africa","Khartoum":"africa","Kinshasa":"africa","Luanda":"africa","Dar es Salaam":"africa",
+  "Beijing":"asia","Shanghai":"asia","Hong Kong":"asia","Tokyo":"asia","Seoul":"asia",
+  "Taipei":"asia","Singapore":"asia","Mumbai":"asia","New Delhi":"asia","Islamabad":"asia",
+  "Kabul":"asia","Bangkok":"asia","Jakarta":"asia","Kuala Lumpur":"asia","Manila":"asia",
+  "Dhaka":"asia","Colombo":"asia","Kathmandu":"asia","Yangon":"asia","Hanoi":"asia",
+  "Ho Chi Minh City":"asia","Phnom Penh":"asia","Vientiane":"asia","Ulaanbaatar":"asia",
+  "Tashkent":"asia","Almaty":"asia","Baku":"asia","Yerevan":"asia","Tbilisi":"asia",
+  "Sydney":"oceania","Canberra":"oceania","Melbourne":"oceania","Auckland":"oceania",
+};
+
 function HeatMap({ articles, onRegion }) {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [selected, setSelected] = useState(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [hoveredLine, setHoveredLine] = useState(null);
+  const [continentFilter, setContinentFilter] = useState("all");
+  const [showLegend, setShowLegend] = useState(false);
 
   // Build city counts and connection lines from articles
   const cityCount = {};
   const connections = []; // { from, to, article, color }
 
-  articles.forEach(a => {
+  // Filter articles by continent
+  const filteredArticles = continentFilter === "all" ? articles : articles.filter(a => {
+    const locs = [...geoTagArticle(a), ...(a.locations||[]).map(l=>fuzzyMatch(l)?.name).filter(Boolean)];
+    return locs.some(loc => CITY_CONTINENT[loc] === continentFilter);
+  });
+
+  filteredArticles.forEach(a => {
     // Get all locations for this article (from keyword scan + Claude locations array)
     const kwLocs = geoTagArticle(a);
     const claudeLocs = (a.locations || []).map(l => fuzzyMatch(l)).filter(Boolean).map(c => c.name);
@@ -683,7 +829,8 @@ function HeatMap({ articles, onRegion }) {
         onRegion && onRegion(name);
         const feat = e.features[0];
         const coords = feat.geometry.coordinates;
-        map.flyTo({ center: coords, zoom: 5, speed: 1.2 });
+        // Zoom to continent if filter active, else zoom to city
+        map.flyTo({ center: coords, zoom: continentFilter !== "all" ? 4 : 5, speed: 1.2 });
       }
     });
     map.on("click", "clarion-lines", (e) => {
@@ -701,7 +848,23 @@ function HeatMap({ articles, onRegion }) {
     map.on("mouseenter", "clarion-lines", () => { map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", "clarion-lines", () => { map.getCanvas().style.cursor = ""; });
 
-  }, [mapLoaded, articles]);
+  }, [mapLoaded, articles, continentFilter]);
+
+  // Auto-fly to continent when filter changes
+  useEffect(() => {
+    if (!mapLoaded || !mapInstance.current) return;
+    const centers = {
+      all:      { center:[15,25],    zoom:1.5 },
+      americas: { center:[-80,15],   zoom:2.2 },
+      europe:   { center:[15,52],    zoom:3.2 },
+      asia:     { center:[105,30],   zoom:2.8 },
+      mideast:  { center:[45,27],    zoom:3.5 },
+      africa:   { center:[20,5],     zoom:2.8 },
+      oceania:  { center:[145,-30],  zoom:3.5 },
+    };
+    const c = centers[continentFilter] || centers.all;
+    mapInstance.current.flyTo({ center:c.center, zoom:c.zoom, speed:1.4, essential:true });
+  }, [mapLoaded, continentFilter]);
 
   const selectedArticles = selected?.type === "city"
     ? articles.filter(a => {
@@ -712,11 +875,63 @@ function HeatMap({ articles, onRegion }) {
 
   return (
     <div>
-      <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 2px",letterSpacing:"-0.02em"}}>World News Map</h2>
-      <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 12px"}}>
-        Dots show story volume. <span style={{color:C.left,fontWeight:600}}>━━</span> dashed lines connect locations mentioned in the same story.
-      </p>
-      <div ref={mapRef} style={{width:"100%",height:420,borderRadius:20,overflow:"hidden",marginBottom:16,border:`1px solid ${C.border}`}}/>
+      {/* Header row */}
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}>
+        <div>
+          <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 2px",letterSpacing:"-0.02em"}}>World News Map</h2>
+          <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>
+            Tap a dot to see stories · dashed lines link locations in the same story
+          </p>
+        </div>
+        <button onClick={()=>setShowLegend(v=>!v)} style={{
+          ...glassBtn(showLegend), padding:"6px 12px", fontSize:12, borderRadius:20,
+          flexShrink:0, marginTop:2,
+        }}>
+          {showLegend ? "✕ Key" : "? Key"}
+        </button>
+      </div>
+
+      {/* Legend panel */}
+      {showLegend && (
+        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"14px 16px",marginBottom:12,animation:"tab-in 0.18s ease"}}>
+          <p style={{fontFamily:F.text,fontSize:11,fontWeight:700,color:C.orange,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px"}}>Map Key</p>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:14,height:14,borderRadius:"50%",background:C.orange,border:"2px solid white",boxShadow:"0 0 0 3px "+C.orange+"33",flexShrink:0}}/>
+              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}>City dot — size shows how many stories mention that location</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <svg width="32" height="10" style={{flexShrink:0}}><line x1="0" y1="5" x2="32" y2="5" stroke={C.left} strokeWidth="1.5" strokeDasharray="4,3"/></svg>
+              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}><span style={{color:C.left,fontWeight:600}}>Blue dashed</span> — left-leaning source connects these locations</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <svg width="32" height="10" style={{flexShrink:0}}><line x1="0" y1="5" x2="32" y2="5" stroke={C.center} strokeWidth="1.5" strokeDasharray="4,3"/></svg>
+              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}><span style={{color:C.center,fontWeight:600}}>Orange dashed</span> — center source connects these locations</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <svg width="32" height="10" style={{flexShrink:0}}><line x1="0" y1="5" x2="32" y2="5" stroke={C.right} strokeWidth="1.5" strokeDasharray="4,3"/></svg>
+              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}><span style={{color:C.right,fontWeight:600}}>Red dashed</span> — right-leaning source connects these locations</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontFamily:F.text,fontSize:13,fontWeight:700,color:C.text,flexShrink:0}}>3</span>
+              <span style={{fontFamily:F.text,fontSize:12,color:C.sub}}>Number inside the dot = story count for that city</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Continent filter tabs */}
+      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:8,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
+        {CONTINENT_FILTERS.map(f => (
+          <button key={f.id} onClick={()=>setContinentFilter(f.id)} style={{
+            ...glassBtn(continentFilter===f.id),
+            padding:"7px 13px", fontSize:12, borderRadius:20, flexShrink:0, whiteSpace:"nowrap",
+            fontWeight: continentFilter===f.id ? 600 : 400,
+          }}>{f.label}</button>
+        ))}
+      </div>
+
+      <div ref={mapRef} style={{width:"100%",height:400,borderRadius:20,overflow:"hidden",marginBottom:12,border:`1px solid ${C.border}`}}/>
       {!mapLoaded && <div style={{display:"flex",gap:10,alignItems:"center",justifyContent:"center",padding:"20px 0"}}><Spinner/><span style={{fontFamily:F.text,fontSize:13,color:C.muted}}>Loading map…</span></div>}
 
       {/* City panel */}
@@ -727,10 +942,16 @@ function HeatMap({ articles, onRegion }) {
             <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.muted}}>✕</button>
           </div>
           {selectedArticles.slice(0,5).map((a,i)=>(
-            <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"12px 14px",marginBottom:8,cursor:"pointer",borderLeft:`3px solid ${leanColor(a.lean)}`}}
-              onClick={()=>onRegion&&onRegion(selected.name)}>
-              <span style={{fontFamily:F.text,fontSize:10,color:C.muted}}>{a.source}</span>
-              <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:"4px 0 0",lineHeight:1.4}}>{decodeHTML(a.headline)}</p>
+            <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:8,overflow:"hidden",borderLeft:`3px solid ${leanColor(a.lean)}`}}>
+              <div style={{padding:"12px 14px",cursor:"pointer"}} onClick={()=>onRegion&&onRegion(selected.name)}>
+                <span style={{fontFamily:F.text,fontSize:10,color:C.muted}}>{a.source} · <span style={{color:leanColor(a.lean),fontWeight:600}}>{a.lean}</span></span>
+                <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:"4px 0 0",lineHeight:1.4}}>{decodeHTML(a.headline)}</p>
+              </div>
+              {a.url && (
+                <div style={{padding:"0 14px 12px",display:"flex",gap:6}}>
+                  <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:"5px 12px",fontSize:11,fontWeight:600}}>Read ↗</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1780,6 +2001,7 @@ function ClarionFinal() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [compareStory, setCompareStory] = useState(null);
   const [showAbout, setShowAbout] = useState(false);
+  const [expandedCard, setExpandedCard] = useState(null); // id of expanded inline card
   const [prevTab, setPrevTab] = useState(null);
   const [tabTransition, setTabTransition] = useState(false);
   const [user, setUser] = useState(null);
@@ -2314,7 +2536,7 @@ function ClarionFinal() {
                           const lc = leanColor(a.lean);
                           return (
                             <div key={a.id}
-                              onClick={()=>{ onRead(a.id); window.open(a.url,"_blank","noopener,noreferrer"); }}
+                              onClick={()=>{ onRead(a.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v => v===a.id ? null : a.id); }}
                               style={{
                                 flexShrink:0,
                                 width: "calc(85vw)",
@@ -2359,6 +2581,23 @@ function ClarionFinal() {
                                   }}>{decodeHTML(a.headline)}</p>
                                 </div>
                               </div>
+                            {/* ── Expanded panel ── */}
+                            {expandedCard === a.id && (
+                              <div style={{padding:"12px 14px 14px", borderTop:`1px solid ${C.border}`, background:C.card}}
+                                onClick={e=>e.stopPropagation()}>
+                                <p style={{fontFamily:F.text,fontSize:13,color:C.sub,lineHeight:1.7,margin:"0 0 10px"}}>{decodeHTML(a.summary)}</p>
+                                <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                                  {a.url && <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:"7px 14px",fontSize:12,fontWeight:600}}>Read ↗</button>}
+                                  <button onClick={()=>{ const adding=!bookmarks.includes(a.id); setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a,adding); if(navigator.vibrate) navigator.vibrate(adding?14:6); }}
+                                    style={{...glassBtn(bookmarks.includes(a.id)),padding:"7px 12px",fontSize:12}}>
+                                    {bookmarks.includes(a.id)?"★ Saved":"☆ Save"}
+                                  </button>
+                                  <button onClick={()=>setVerifying(a)} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}>Fact Check</button>
+                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}>⚖ Compare</button>
+                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}>🧬 DNA</button>
+                                </div>
+                              </div>
+                            )}
                             </div>
                           );
                         })}
@@ -2398,7 +2637,7 @@ function ClarionFinal() {
                                 cursor:"pointer",
                                 borderLeft: isFirst ? "none" : `3px solid ${lc}`,
                               }}
-                              onClick={()=>{ onRead(a.id); window.open(a.url,"_blank","noopener,noreferrer"); }}
+                              onClick={()=>{ onRead(a.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v => v===a.id ? null : a.id); }}
                             >
                               {isFirst && (
                                 <div style={{ height:160, overflow:"hidden" }}>
@@ -2417,6 +2656,22 @@ function ClarionFinal() {
                                   display:"-webkit-box", WebkitLineClamp: isFirst ? 2 : 3, WebkitBoxOrient:"vertical", overflow:"hidden",
                                 }}>{decodeHTML(a.headline)}</p>
                               </div>
+                              {/* ── Expanded panel ── */}
+                              {expandedCard === a.id && (
+                                <div style={{padding:"10px 12px 12px", borderTop:`1px solid ${C.border}`}}
+                                  onClick={e=>e.stopPropagation()}>
+                                  <p style={{fontFamily:F.text,fontSize:12,color:C.sub,lineHeight:1.65,margin:"0 0 8px"}}>{decodeHTML(a.summary)}</p>
+                                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                    {a.url && <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:"6px 12px",fontSize:11,fontWeight:600}}>Read ↗</button>}
+                                    <button onClick={()=>{ const adding=!bookmarks.includes(a.id); setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a,adding); if(navigator.vibrate) navigator.vibrate(adding?14:6); }}
+                                      style={{...glassBtn(bookmarks.includes(a.id)),padding:"6px 10px",fontSize:11}}>
+                                      {bookmarks.includes(a.id)?"★":"☆"} Save
+                                    </button>
+                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}>⚖ Compare</button>
+                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}>🧬 DNA</button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -2433,7 +2688,7 @@ function ClarionFinal() {
                           const lc = leanColor(a.lean);
                           return (
                             <div key={a.id}
-                              onClick={()=>{ onRead(a.id); window.open(a.url,"_blank","noopener,noreferrer"); }}
+                              onClick={()=>{ onRead(a.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v => v===a.id ? null : a.id); }}
                               style={{
                                 display:"flex", alignItems:"center", gap:12, padding:"13px 14px",
                                 borderBottom: i < noImg.length-1 ? `1px solid ${C.border}` : "none",
