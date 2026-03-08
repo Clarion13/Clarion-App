@@ -1015,8 +1015,19 @@ function HeatMap({ articles, onRegion }) {
       {selected?.type === "city" && selectedArticles.length > 0 && (
         <div style={{marginBottom:16}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <p style={{fontFamily:F.display,fontSize:16,fontWeight:700,color:C.text,margin:0}}>{selected.name} — {selectedArticles.length} {selectedArticles.length===1?"story":"stories"}</p>
-            <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.muted}}>×</button>
+            <div>
+              <p style={{fontFamily:F.display,fontSize:16,fontWeight:700,color:C.text,margin:"0 0 2px"}}>{selected.name}</p>
+              <p style={{fontFamily:F.text,fontSize:11,color:C.muted,margin:0}}>{selectedArticles.length} {selectedArticles.length===1?"story":"stories"}</p>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <button onClick={()=>{onRegion&&onRegion(selected.name);}} style={{
+                ...glassBtn(false), padding:"6px 12px", fontSize:11, fontWeight:600, borderRadius:99,
+                color:C.orange, border:`1px solid ${C.orange}40`, background:C.orange+"10",
+              }}>
+                View in Feed ↗
+              </button>
+              <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.muted}}>×</button>
+            </div>
           </div>
           {selectedArticles.slice(0,5).map((a,i)=>(
             <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:8,overflow:"hidden",borderLeft:`3px solid ${leanColor(a.lean)}`}}>
@@ -1024,11 +1035,11 @@ function HeatMap({ articles, onRegion }) {
                 <span style={{fontFamily:F.text,fontSize:10,color:C.muted}}>{a.source} · <span style={{color:leanColor(a.lean),fontWeight:600}}>{a.lean}</span></span>
                 <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:"4px 0 0",lineHeight:1.4}}>{decodeHTML(a.headline)}</p>
               </div>
-              {a.url && (
-                <div style={{padding:"0 14px 12px",display:"flex",gap:6}}>
+              <div style={{padding:"0 14px 12px",display:"flex",gap:6}}>
+                {a.url && (
                   <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:"5px 12px",fontSize:11,fontWeight:600}}>Read ↗</button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -2062,6 +2073,9 @@ function ClarionFinal() {
   const [showWrite,setShowWrite]=useState(false);
   const [journalist,setJournalist]=useState(null);
   const [regionFilter,setRegionFilter]=useState(null);
+  const [notifPermission,setNotifPermission]=useState(typeof Notification!=="undefined"?Notification.permission:"default");
+  const [notifEnabled,setNotifEnabled]=useState(()=>{try{return localStorage.getItem("clarion_notif")==="1";}catch{return false;}});
+  const [notifTime,setNotifTime]=useState(()=>{try{return localStorage.getItem("clarion_notif_time")||"08:00";}catch{return "08:00";}});
   const [aiArticles,setAiArticles]=useState([]);
   const [aiLoading,setAiLoading]=useState(false);
   const [briefing,setBriefing]=useState(null);
@@ -2239,6 +2253,32 @@ function ClarionFinal() {
         .then(reg => console.log("[Clarion] SW registered:", reg.scope))
         .catch(err => console.warn("[Clarion] SW failed:", err));
     }
+    // Re-schedule briefing if already enabled
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      const savedTime = localStorage.getItem("clarion_notif_time") || "08:00";
+      if (localStorage.getItem("clarion_notif") === "1") {
+        // scheduleLocalBriefing called after component mounts via effect below
+        setTimeout(() => {
+          const [h,m] = savedTime.split(":").map(Number);
+          const now = new Date();
+          const next = new Date();
+          next.setHours(h, m, 0, 0);
+          if (next <= now) next.setDate(next.getDate() + 1);
+          const msUntil = next - now;
+          const tid = setTimeout(() => {
+            if (Notification.permission === "granted") {
+              new Notification("Your Clarion Briefing", {
+                body: "Good morning. Your personalised news briefing is ready.",
+                icon: "/icon-192.png",
+                badge: "/icon-192.png",
+                tag: "clarion-briefing",
+              });
+            }
+          }, msUntil);
+          localStorage.setItem("clarion_notif_tid", String(tid));
+        }, 1000);
+      }
+    }
     // Handle deep links from PWA shortcuts e.g. /?tab=map
     const params = new URLSearchParams(window.location.search);
     const deepTab = params.get("tab");
@@ -2246,6 +2286,55 @@ function ClarionFinal() {
       setTab(deepTab);
     }
   }, []);
+
+  // ── NOTIFICATION HELPERS ──
+  const requestNotifPermission = async () => {
+    if (typeof Notification === "undefined") return;
+    const perm = await Notification.requestPermission();
+    setNotifPermission(perm);
+    if (perm === "granted") {
+      setNotifEnabled(true);
+      localStorage.setItem("clarion_notif","1");
+      scheduleLocalBriefing(notifTime);
+    }
+  };
+
+  const scheduleLocalBriefing = (time) => {
+    // Store the time — the SW or a setTimeout will fire it
+    localStorage.setItem("clarion_notif_time", time);
+    localStorage.setItem("clarion_notif","1");
+    // Cancel any existing alarm timeout
+    const existingId = localStorage.getItem("clarion_notif_tid");
+    if (existingId) clearTimeout(parseInt(existingId));
+    // Calculate ms until next occurrence of chosen time
+    const [h,m] = time.split(":").map(Number);
+    const now = new Date();
+    const next = new Date();
+    next.setHours(h, m, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    const msUntil = next - now;
+    const tid = setTimeout(() => {
+      if (Notification.permission === "granted") {
+        new Notification("Your Clarion Briefing", {
+          body: "Good morning. Your personalised news briefing is ready.",
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
+          tag: "clarion-briefing",
+        });
+        // Reschedule for tomorrow
+        scheduleLocalBriefing(time);
+      }
+    }, msUntil);
+    localStorage.setItem("clarion_notif_tid", String(tid));
+    console.log("[Clarion] Briefing scheduled in", Math.round(msUntil/60000), "mins");
+  };
+
+  const disableNotifications = () => {
+    setNotifEnabled(false);
+    localStorage.setItem("clarion_notif","0");
+    const tid = localStorage.getItem("clarion_notif_tid");
+    if (tid) { clearTimeout(parseInt(tid)); localStorage.removeItem("clarion_notif_tid"); }
+  };
 
   const CACHE_KEY = "clarion_feed_v3";
   const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
@@ -2549,20 +2638,37 @@ function ClarionFinal() {
                     {c}
                   </button>
                 ))}
-                {regionFilter && (
-                  <button onClick={()=>setRegionFilter(null)} style={{
-                    flexShrink:0, padding:"8px 16px", fontSize:12,
-                    fontFamily:F.text, fontWeight:500, whiteSpace:"nowrap",
-                    cursor:"pointer", borderRadius:980,
-                    border:`1px solid ${C.border}`,
-                    background:C.surface,
-                    color:C.muted, boxShadow:"none",
-                  }}>
-                    {regionFilter} ✕
-                  </button>
-                )}
+
               </div>
             </div>
+
+            {/* ── REGION FILTER HEADER ── */}
+            {regionFilter && (
+              <div style={{
+                display:"flex", alignItems:"center", justifyContent:"space-between",
+                background:C.surface, borderRadius:14,
+                padding:"12px 16px", marginBottom:14,
+                border:`1px solid ${C.border}`,
+              }}>
+                <div style={{display:"flex", alignItems:"center", gap:10}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.orange} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <div>
+                    <p style={{fontFamily:F.display, fontSize:14, fontWeight:700, color:C.text, margin:0}}>{regionFilter}</p>
+                    <p style={{fontFamily:F.text, fontSize:11, color:C.muted, margin:0}}>Showing stories mentioning this location</p>
+                  </div>
+                </div>
+                <button onClick={()=>setRegionFilter(null)} style={{
+                  display:"flex", alignItems:"center", gap:5,
+                  background:"none", border:`1px solid ${C.border}`,
+                  borderRadius:99, padding:"5px 12px",
+                  fontFamily:F.text, fontSize:12, color:C.muted,
+                  cursor:"pointer",
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  Clear
+                </button>
+              </div>
+            )}
 
             {/* Search results view */}
             {searchResults !== null && (
@@ -2974,15 +3080,66 @@ function ClarionFinal() {
                   }}/>
                 </div>
               </div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",borderBottom:`1px solid ${C.divider}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <span style={{fontSize:18}}>⏱</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{flexShrink:0,color:C.muted}}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
                   <div>
                     <p style={{fontFamily:F.text,fontSize:14,fontWeight:600,color:C.text,margin:0}}>Feed Updates</p>
-                    <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>Refreshes every 3 minutes</p>
+                    <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>Refreshes every 15 minutes</p>
                   </div>
                 </div>
                 <span style={{fontFamily:F.text,fontSize:12,color:C.muted}}>Auto</span>
+              </div>
+
+              <div style={{padding:"16px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom: (notifEnabled && notifPermission==="granted") ? 14 : 0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{flexShrink:0,color:C.muted}}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+                    <div>
+                      <p style={{fontFamily:F.text,fontSize:14,fontWeight:600,color:C.text,margin:0}}>Morning Briefing</p>
+                      <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0}}>
+                        {notifPermission==="denied" ? "Blocked in browser settings"
+                          : (notifEnabled && notifPermission==="granted") ? ("Daily briefing at " + notifTime)
+                          : "Get a daily headline digest"}
+                      </p>
+                    </div>
+                  </div>
+                  {notifPermission === "denied" ? (
+                    <span style={{fontFamily:F.text,fontSize:11,color:C.muted}}>Blocked</span>
+                  ) : (
+                    <div onClick={()=>{ if(!notifEnabled || notifPermission!=="granted"){ requestNotifPermission(); } else { disableNotifications(); } }} style={{
+                      width:48, height:28, borderRadius:14,
+                      background:(notifEnabled && notifPermission==="granted") ? C.orange : C.divider,
+                      position:"relative", cursor:"pointer",
+                      transition:"background 0.25s", flexShrink:0,
+                    }}>
+                      <div style={{
+                        position:"absolute", top:3,
+                        left:(notifEnabled && notifPermission==="granted") ? 22 : 3,
+                        width:22, height:22, borderRadius:"50%", background:"#fff",
+                        boxShadow:"0 1px 4px rgba(0,0,0,0.2)",
+                        transition:"left 0.22s cubic-bezier(0.4,0,0.2,1)",
+                      }}/>
+                    </div>
+                  )}
+                </div>
+                {(notifEnabled && notifPermission==="granted") && (
+                  <div style={{display:"flex",alignItems:"center",gap:10,paddingTop:4}}>
+                    <p style={{fontFamily:F.text,fontSize:12,color:C.muted,margin:0,flexShrink:0}}>Send at</p>
+                    <input
+                      type="time"
+                      value={notifTime}
+                      onChange={e=>{ setNotifTime(e.target.value); scheduleLocalBriefing(e.target.value); }}
+                      style={{
+                        fontFamily:F.text, fontSize:13, fontWeight:600,
+                        color:C.text, background:C.card,
+                        border:"1px solid " + C.border, borderRadius:8,
+                        padding:"5px 10px", cursor:"pointer", outline:"none",
+                      }}
+                    />
+                    <p style={{fontFamily:F.text,fontSize:11,color:C.muted,margin:0}}>local time</p>
+                  </div>
+                )}
               </div>
             </div>
 
