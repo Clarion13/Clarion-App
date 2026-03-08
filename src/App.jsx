@@ -1,3 +1,7 @@
+// © 2026 Clarion. All rights reserved.
+// Clarion — theclarion.app
+// Unauthorized copying, modification, or distribution of this software is strictly prohibited.
+
 import { useState, useEffect, useRef, Component } from "react";
 import { createClient } from "@supabase/supabase-js";
 
