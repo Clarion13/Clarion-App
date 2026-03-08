@@ -2852,7 +2852,8 @@ function ClarionFinal() {
                 </>
               );
             })()}
-        {tab==="map" && (
+          </>
+        )} && (
           <div style={{paddingTop:20}}>
             <HeatMap articles={all} onRegion={r=>{setRegionFilter(r===regionFilter?null:r);setTab("feed");}}/>
           </div>
