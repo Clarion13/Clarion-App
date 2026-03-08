@@ -2669,220 +2669,189 @@ function ClarionFinal() {
             )}
 
             {searchResults === null && feed.length > 0 && (() => {
-              const withImg = feed.filter(a => a.image);
-              const noImg   = feed.filter(a => !a.image);
-              // Carousel: top 6 image stories
-              const carousel = withImg.slice(0, 6);
-              // Section rows by category (image stories only, skip carousel ones)
-              const afterCarousel = withImg.slice(6);
-              const sectionCats = ["Politics","World","Tech","Business","Science","Health","Uplifting","Breaking"];
-              const sections = sectionCats.map(cat => ({
-                cat,
-                articles: afterCarousel.filter(a => a.category === cat),
-              })).filter(s => s.articles.length >= 2);
+              const SECTION_CATS = ["Politics","World","Tech","Business","Science","Health","Uplifting","Breaking"];
+
+              // ── TOP STORIES: pick the best 6 stories across all categories ──
+              // Score = breaking bonus + has image bonus + recency (index)
+              const scored = feed.map((a, i) => ({
+                ...a,
+                _score: (a.breaking ? 3 : 0) + (a.image ? 2 : 0) + Math.max(0, 10 - i * 0.3),
+              })).sort((a,b) => b._score - a._score);
+
+              const hero    = scored[0];
+              const topRest = scored.slice(1, 6);
+              const topIds  = new Set(scored.slice(0, 6).map(a => a.id));
+
+              // ── CATEGORY SECTIONS: remaining articles not in Top Stories ──
+              const remaining = feed.filter(a => !topIds.has(a.id));
+              const sections  = SECTION_CATS
+                .map(cat => ({ cat, articles: remaining.filter(a => a.category === cat) }))
+                .filter(s => s.articles.length >= 1);
+
+              // ── Shared article card renderers ──
+              const ActionRow = ({ a, size="sm" }) => (
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",paddingTop:8}} onClick={e=>e.stopPropagation()}>
+                  {a.url && <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:size==="lg"?"7px 14px":"6px 11px",fontSize:size==="lg"?12:11,fontWeight:600}}>Read ↗</button>}
+                  <button onClick={()=>{ const adding=!bookmarks.includes(a.id); setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a,adding); }}
+                    style={{...glassBtn(bookmarks.includes(a.id)),padding:size==="lg"?"7px 12px":"6px 10px",fontSize:size==="lg"?12:11}}>
+                    {bookmarks.includes(a.id)?"Saved":"Save"}
+                  </button>
+                  <button onClick={()=>setVerifying(a)} style={{...glassBtn(false),padding:size==="lg"?"7px 12px":"6px 10px",fontSize:size==="lg"?12:11}}>Fact Check</button>
+                  <button onClick={()=>{ setDnaQuery(a); setTab("dna"); }} style={{...glassBtn(false),padding:size==="lg"?"7px 12px":"6px 10px",fontSize:size==="lg"?12:11}}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:3}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA
+                  </button>
+                </div>
+              );
 
               return (
                 <>
-                  {/* ── HERO CAROUSEL ── */}
-                  {carousel.length > 0 && (
-                    <div style={{ margin:"4px -16px 20px", position:"relative" }}>
-                      <div id="clarion-carousel" style={{
-                        display:"flex", overflowX:"auto", gap:12,
-                        padding:"0 16px 12px", scrollbarWidth:"none",
-                        scrollSnapType:"x mandatory",
-                        WebkitOverflowScrolling:"touch",
-                      }}>
-                        {carousel.map((a, i) => {
-                          const lc = leanColor(a.lean);
-                          return (
-                            <div key={a.id}
-                              onClick={()=>{ onRead(a.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v => v===a.id ? null : a.id); }}
-                              style={{
-                                flexShrink:0,
-                                width: "calc(85vw)",
-                                maxWidth:480,
-                                borderRadius:18,
-                                overflow:"hidden",
-                                position:"relative",
-                                cursor:"pointer",
-                                scrollSnapAlign:"start",
-                                background:C.surface,
-                                border:`1px solid ${C.border}`,
-                              }}>
-                              {/* Image */}
-                              <div style={{ height:220, overflow:"hidden", position:"relative" }}>
-                                <img src={a.image} alt=""
-                                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
-                                  onError={e=>{ e.target.parentElement.style.background = lc+"18"; e.target.style.display="none"; }}
-                                />
-                                {/* Gradient overlay */}
-                                <div style={{
-                                  position:"absolute", inset:0,
-                                  background:"linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.1) 55%, transparent 100%)",
-                                }}/>
-                                {/* Source + lean badge over image */}
-                                <div style={{ position:"absolute", top:12, left:12, display:"flex", gap:6, alignItems:"center" }}>
-                                  <span style={{ fontFamily:F.text, fontSize:10, fontWeight:700, color:"#fff",
-                                    background:"rgba(0,0,0,0.45)", backdropFilter:"blur(8px)",
-                                    borderRadius:20, padding:"3px 9px" }}>{a.source}</span>
-                                  <span style={{ fontFamily:F.text, fontSize:10, fontWeight:700,
-                                    color:"#fff", background:lc,
-                                    borderRadius:20, padding:"3px 9px" }}>
-                                    {a.lean==="left"?"◀ L":a.lean==="right"?"▶ R":"● C"}
-                                  </span>
-                                </div>
-                                {/* Headline over image */}
-                                <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"14px 14px 16px" }}>
-                                  <p style={{
-                                    fontFamily:F.display, fontSize:17, fontWeight:700,
-                                    color:"#fff", margin:0, lineHeight:1.3,
-                                    display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden",
-                                    textShadow:"0 1px 4px rgba(0,0,0,0.4)",
-                                  }}>{decodeHTML(a.headline)}</p>
-                                </div>
-                              </div>
-                            {/* ── Expanded panel ── */}
-                            {expandedCard === a.id && (
-                              <div style={{padding:"12px 14px 14px", borderTop:`1px solid ${C.border}`, background:C.card}}
-                                onClick={e=>e.stopPropagation()}>
-                                <p style={{fontFamily:F.text,fontSize:13,color:C.sub,lineHeight:1.7,margin:"0 0 10px"}}>{decodeHTML(a.summary)}</p>
-                                <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                                  {a.url && <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:"7px 14px",fontSize:12,fontWeight:600}}>Read ↗</button>}
-                                  <button onClick={()=>{ const adding=!bookmarks.includes(a.id); setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a,adding); if(navigator.vibrate) navigator.vibrate(adding?14:6); }}
-                                    style={{...glassBtn(bookmarks.includes(a.id)),padding:"7px 12px",fontSize:12}}>
-                                    {bookmarks.includes(a.id)?"Saved" : "Save"}
-                                  </button>
-                                  <button onClick={()=>setVerifying(a)} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}>Fact Check</button>
-                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
-                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a); setTab("dna"); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
-                                </div>
-                              </div>
-                            )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* Scroll dots */}
-                      <CarouselDots items={carousel} carouselId="clarion-carousel"/>
+                  {/* ══════════════════════════════════
+                      TOP STORIES
+                  ══════════════════════════════════ */}
+                  <div style={{marginBottom:28}}>
+                    <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:14}}>
+                      <p style={{fontFamily:F.display,fontSize:20,fontWeight:800,color:C.text,margin:0,letterSpacing:"-0.03em"}}>Top Stories</p>
+                      <p style={{fontFamily:F.text,fontSize:11,color:C.muted,margin:0}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</p>
                     </div>
-                  )}
 
-                  {/* ── CATEGORY SECTIONS ── */}
-                  {sections.map(({ cat, articles }) => (
-                    <div key={cat} style={{ marginBottom:24 }}>
-                      {/* Section header */}
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-                        <p style={{
-                          fontFamily:F.display, fontSize:18, fontWeight:800,
-                          color:C.text, margin:0, letterSpacing:"-0.02em",
-                        }}>{cat}</p>
-                        <button onClick={()=>setCategory(cat)} style={{
-                          fontFamily:F.text, fontSize:12, color:C.accent,
-                          background:"none", border:"none", cursor:"pointer", fontWeight:600,
-                        }}>See all →</button>
+                    {/* HERO — full-width lead */}
+                    {hero && (
+                      <div
+                        onClick={()=>{ onRead(hero.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v=>v===hero.id?null:hero.id); }}
+                        style={{
+                          background:C.card, borderRadius:18, overflow:"hidden",
+                          border:`1px solid ${C.border}`, marginBottom:10, cursor:"pointer",
+                          borderLeft:`4px solid ${leanColor(hero.lean)}`,
+                        }}>
+                        {hero.image && (
+                          <div style={{height:200,overflow:"hidden"}}>
+                            <img src={hero.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}
+                              onError={e=>e.target.style.display="none"}/>
+                          </div>
+                        )}
+                        <div style={{padding:"14px 16px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:6,flexWrap:"wrap"}}>
+                            {hero.breaking && <span style={{fontFamily:F.text,fontSize:9,fontWeight:800,color:"#fff",background:C.breaking,borderRadius:4,padding:"2px 6px",letterSpacing:"0.06em"}}>LIVE</span>}
+                            <span style={{fontFamily:F.text,fontSize:11,fontWeight:600,color:C.accent}}>{hero.source}</span>
+                            <span style={{fontFamily:F.text,fontSize:10,color:leanColor(hero.lean),fontWeight:600,background:leanColor(hero.lean)+"18",borderRadius:6,padding:"1px 6px"}}>{hero.lean}</span>
+                            <span style={{fontFamily:F.text,fontSize:10,color:C.muted,background:C.surface,borderRadius:6,padding:"1px 6px",border:`1px solid ${C.divider}`}}>{hero.category}</span>
+                          </div>
+                          <p style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:C.text,margin:"0 0 6px",lineHeight:1.25,letterSpacing:"-0.02em"}}>{decodeHTML(hero.headline)}</p>
+                          {hero.summary && <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:0,lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(hero.summary)}</p>}
+                        </div>
+                        {expandedCard===hero.id && <div style={{padding:"0 16px 16px"}} onClick={e=>e.stopPropagation()}><ActionRow a={hero} size="lg"/></div>}
                       </div>
-                      {/* Lead + side stack */}
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                        {articles.slice(0,4).map((a, i) => {
-                          const lc = leanColor(a.lean);
-                          const isFirst = i === 0;
-                          return (
-                            <div key={a.id}
-                              style={{
-                                gridColumn: isFirst ? "1 / -1" : "auto",
-                                borderRadius:14,
-                                overflow:"hidden",
-                                background:C.card,
-                                border:`1px solid ${C.border}`,
-                                cursor:"pointer",
-                                borderLeft: isFirst ? "none" : `3px solid ${lc}`,
-                              }}
-                              onClick={()=>{ onRead(a.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v => v===a.id ? null : a.id); }}
-                            >
-                              {isFirst && (
-                                <div style={{ height:160, overflow:"hidden" }}>
-                                  <img src={a.image} alt=""
-                                    style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
-                                    onError={e=>{ e.target.style.display="none"; }}/>
-                                </div>
-                              )}
-                              <div style={{ padding: isFirst ? "12px 14px" : "10px 12px" }}>
-                                <p style={{ fontFamily:F.text, fontSize:10, color:C.accent, fontWeight:600, margin:"0 0 4px" }}>{a.source}</p>
-                                <p style={{
-                                  fontFamily:F.display,
-                                  fontSize: isFirst ? 15 : 13,
-                                  fontWeight: 700,
-                                  color:C.text, margin:0, lineHeight:1.35,
-                                  display:"-webkit-box", WebkitLineClamp: isFirst ? 2 : 3, WebkitBoxOrient:"vertical", overflow:"hidden",
-                                }}>{decodeHTML(a.headline)}</p>
-                              </div>
-                              {/* ── Expanded panel ── */}
-                              {expandedCard === a.id && (
-                                <div style={{padding:"10px 12px 12px", borderTop:`1px solid ${C.border}`}}
-                                  onClick={e=>e.stopPropagation()}>
-                                  <p style={{fontFamily:F.text,fontSize:12,color:C.sub,lineHeight:1.65,margin:"0 0 8px"}}>{decodeHTML(a.summary)}</p>
-                                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                                    {a.url && <button onClick={()=>window.open(a.url,"_blank","noopener,noreferrer")} style={{...glassBtn(false),padding:"6px 12px",fontSize:11,fontWeight:600}}>Read ↗</button>}
-                                    <button onClick={()=>{ const adding=!bookmarks.includes(a.id); setBookmarks(v=>adding?[...v,a.id]:v.filter(x=>x!==a.id)); if(onBookmarkSync) onBookmarkSync(a,adding); if(navigator.vibrate) navigator.vibrate(adding?14:6); }}
-                                      style={{...glassBtn(bookmarks.includes(a.id)),padding:"6px 10px",fontSize:11}}>
-                                      {bookmarks.includes(a.id) ? "Saved" : "Save"}
-                                    </button>
-                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
-                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a); setTab("dna"); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
+                    )}
+
+                    {/* TOP 2-6 — compact list */}
+                    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden"}}>
+                      {topRest.map((a, i) => {
+                        const lc = leanColor(a.lean);
+                        return (
+                          <div key={a.id}
+                            onClick={()=>{ onRead(a.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v=>v===a.id?null:a.id); }}
+                            style={{
+                              display:"flex", gap:12, padding:"12px 14px",
+                              borderBottom: i < topRest.length-1 ? `1px solid ${C.divider}` : "none",
+                              cursor:"pointer",
+                            }}>
+                            <div style={{display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",width:22,flexShrink:0}}>
+                              <span style={{fontFamily:F.display,fontSize:13,fontWeight:800,color:C.muted}}>{i+2}</span>
+                            </div>
+                            <div style={{width:2,alignSelf:"stretch",borderRadius:2,background:lc,flexShrink:0}}/>
+                            <div style={{flex:1,minWidth:0}}>
+                              <p style={{fontFamily:F.text,fontSize:10,color:C.muted,margin:"0 0 3px"}}>{a.source} · <span style={{color:lc,fontWeight:600}}>{a.lean}</span></p>
+                              <p style={{fontFamily:F.display,fontSize:14,fontWeight:700,color:C.text,margin:0,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(a.headline)}</p>
+                            </div>
+                            {a.image && <img src={a.image} alt="" style={{width:56,height:56,borderRadius:8,objectFit:"cover",flexShrink:0}} onError={e=>e.target.style.display="none"}/>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ══════════════════════════════════
+                      CATEGORY SECTIONS
+                  ══════════════════════════════════ */}
+                  {sections.map(({ cat, articles: catArts }) => {
+                    const catLead   = catArts.find(a => a.image) || catArts[0];
+                    const catRest   = catArts.filter(a => a.id !== catLead.id).slice(0, 4);
+                    const catLeadLC = leanColor(catLead.lean);
+
+                    return (
+                      <div key={cat} style={{marginBottom:28}}>
+                        {/* Section header */}
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{width:3,height:18,borderRadius:2,background:C.orange}}/>
+                            <p style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:C.text,margin:0,letterSpacing:"-0.02em"}}>{cat}</p>
+                          </div>
+                          <button onClick={()=>setCategory(cat)} style={{fontFamily:F.text,fontSize:12,color:C.accent,background:"none",border:"none",cursor:"pointer",fontWeight:600}}>
+                            See all →
+                          </button>
+                        </div>
+
+                        {/* Lead story */}
+                        <div
+                          onClick={()=>{ onRead(catLead.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v=>v===catLead.id?null:catLead.id); }}
+                          style={{
+                            background:C.card,borderRadius:14,overflow:"hidden",
+                            border:`1px solid ${C.border}`,
+                            borderLeft:`3px solid ${catLeadLC}`,
+                            marginBottom:catRest.length?8:0,
+                            cursor:"pointer",
+                          }}>
+                          {catLead.image && (
+                            <div style={{height:140,overflow:"hidden"}}>
+                              <img src={catLead.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}
+                                onError={e=>e.target.style.display="none"}/>
+                            </div>
+                          )}
+                          <div style={{padding:"11px 13px"}}>
+                            <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                              <span style={{fontFamily:F.text,fontSize:10,fontWeight:600,color:C.accent}}>{catLead.source}</span>
+                              <span style={{fontFamily:F.text,fontSize:9,color:catLeadLC,fontWeight:600,background:catLeadLC+"18",borderRadius:5,padding:"1px 5px"}}>{catLead.lean}</span>
+                            </div>
+                            <p style={{fontFamily:F.display,fontSize:15,fontWeight:700,color:C.text,margin:0,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(catLead.headline)}</p>
+                          </div>
+                          {expandedCard===catLead.id && (
+                            <div style={{padding:"0 13px 12px"}} onClick={e=>e.stopPropagation()}>
+                              {catLead.summary && <p style={{fontFamily:F.text,fontSize:12,color:C.sub,margin:"0 0 8px",lineHeight:1.6}}>{decodeHTML(catLead.summary)}</p>}
+                              <ActionRow a={catLead}/>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Rest — compact list */}
+                        {catRest.length > 0 && (
+                          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+                            {catRest.map((a, i) => {
+                              const lc = leanColor(a.lean);
+                              return (
+                                <div key={a.id}
+                                  onClick={()=>{ onRead(a.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v=>v===a.id?null:a.id); }}
+                                  style={{
+                                    display:"flex",gap:10,padding:"11px 13px",
+                                    borderBottom:i<catRest.length-1?`1px solid ${C.divider}`:"none",
+                                    cursor:"pointer",
+                                  }}>
+                                  <div style={{width:2,alignSelf:"stretch",borderRadius:2,background:lc,flexShrink:0}}/>
+                                  <div style={{flex:1,minWidth:0}}>
+                                    <p style={{fontFamily:F.text,fontSize:10,color:C.muted,margin:"0 0 2px"}}>{a.source} · <span style={{color:lc,fontWeight:600}}>{a.lean}</span></p>
+                                    <p style={{fontFamily:F.display,fontSize:13,fontWeight:600,color:C.text,margin:0,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(a.headline)}</p>
                                   </div>
+                                  {a.image && <img src={a.image} alt="" style={{width:48,height:48,borderRadius:7,objectFit:"cover",flexShrink:0}} onError={e=>e.target.style.display="none"}/>}
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
-
-                  {/* ── TEXT BRIEFS (no image) ── */}
-                  {noImg.length > 0 && (
-                    <div style={{ marginBottom:24 }}>
-                      <p style={{ fontFamily:F.display, fontSize:18, fontWeight:800, color:C.text, margin:"0 0 10px", letterSpacing:"-0.02em" }}>More Stories</p>
-                      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:16, overflow:"hidden" }}>
-                        {noImg.map((a, i) => {
-                          const lc = leanColor(a.lean);
-                          return (
-                            <div key={a.id}
-                              onClick={()=>{ onRead(a.id); if(navigator.vibrate) navigator.vibrate(6); setExpandedCard(v => v===a.id ? null : a.id); }}
-                              style={{
-                                display:"flex", alignItems:"center", gap:12, padding:"13px 14px",
-                                borderBottom: i < noImg.length-1 ? `1px solid ${C.border}` : "none",
-                                cursor:"pointer",
-                              }}>
-                              <div style={{ width:3, alignSelf:"stretch", borderRadius:2, background:lc, flexShrink:0 }}/>
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <p style={{ fontFamily:F.text, fontSize:13, fontWeight:600, color:C.text,
-                                  margin:"0 0 3px", lineHeight:1.35,
-                                  display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
-                                  {decodeHTML(a.headline)}
-                                </p>
-                                <div style={{ display:"flex", gap:5, alignItems:"center" }}>
-                                  <span style={{ fontFamily:F.text, fontSize:10, color:C.muted }}>{a.source}</span>
-                                  <span style={{ color:C.muted, fontSize:10 }}>·</span>
-                                  <span style={{ fontFamily:F.text, fontSize:10, color:lc, fontWeight:600 }}>
-                                    {a.lean==="left"?"Left":a.lean==="right"?"Right":"Center"}
-                                  </span>
-                                </div>
-                              </div>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </>
               );
             })()}
-          </>
-        )}
-
-
         {tab==="map" && (
           <div style={{paddingTop:20}}>
             <HeatMap articles={all} onRegion={r=>{setRegionFilter(r===regionFilter?null:r);setTab("feed");}}/>
