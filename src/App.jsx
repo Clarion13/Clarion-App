@@ -1096,324 +1096,302 @@ function buildLevels(tree) {
   return levels;
 }
 
-function DNATree({ articles }) {
-  const [inputVal, setInputVal] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [tree, setTree] = useState(null);
-  const [error, setError] = useState(null);
-  const [selectedId, setSelectedId] = useState(null);
-  const [provOpen, setProvOpen] = useState(new Set());
+function DNATree({ articles, initialArticle, onClearQuery }) {
+  const [inputVal, setInputVal]   = useState("");
+  const [loading,  setLoading]    = useState(false);
+  const [sources,  setSources]    = useState(null);  // flat list of source objects
+  const [storyTitle, setStoryTitle] = useState("");
+  const [error,    setError]      = useState(null);
+  const [expanded, setExpanded]   = useState(null);
 
+  // When a DNA button is clicked from the feed, auto-trace that article
+  useEffect(() => {
+    if (initialArticle) {
+      const q = initialArticle.headline || "";
+      setInputVal(q);
+      traceDNA(q, initialArticle);
+      if (onClearQuery) onClearQuery();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialArticle?.id]);
 
-  const togProv = (e, id) => { e.stopPropagation(); setProvOpen(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; }); };
+  const traceDNA = async (rawQuery, seedArticle = null) => {
+    if (!rawQuery.trim()) return;
+    setLoading(true); setError(null); setSources(null); setExpanded(null);
 
-  const traceDNA = async (searchQuery) => {
-    setLoading(true); setError(null); setTree(null); setSelectedId(null); setProvOpen(new Set());
     try {
-      const q = encodeURIComponent(searchQuery.split(" ").slice(0,5).join(" "));
-      const res = await fetch(`https://newsdata.io/api/1/news?apikey=${NEWSDATA_KEY}&q=${q}&language=en&size=10`);
-      const json = await res.json();
-      const rawArticles = (json.results || []).filter(a => a.title && a.source_id).slice(0, 8);
-      if (rawArticles.length === 0) { setError("No sources found. Try a different search."); setLoading(false); return; }
+      // ── Step 1: Build a tight, specific search query ──
+      // Strip filler words, keep proper nouns + key verbs (max 6 words)
+      const stopwords = new Set(["the","a","an","is","are","was","were","in","on","at","to","for","of","and","or","but","how","why","what","who","with","after","before","says","said"]);
+      const keywords = rawQuery
+        .replace(/[^\w\s]/g,"")
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !stopwords.has(w.toLowerCase()))
+        .slice(0, 6)
+        .join(" ");
 
-      const articleList = rawArticles.map((a,i) =>
-        `${i+1}. Source: ${a.source_id} | Title: "${a.title}" | Published: ${a.pubDate||"unknown"} | URL: ${a.link||""} | Snippet: ${a.description||""}`
+      const q = encodeURIComponent(keywords);
+      const res = await fetch(
+        `https://newsdata.io/api/1/news?apikey=${NEWSDATA_KEY}&q=${q}&language=en&size=10`
+      );
+      const json = await res.json();
+      const raw = (json.results || []).filter(a => a.title && a.source_id).slice(0, 8);
+
+      if (raw.length === 0) {
+        setError("No sources found for this story. Try a more specific search.");
+        setLoading(false);
+        return;
+      }
+
+      // ── Step 2: Send to Claude with full context ──
+      const seedContext = seedArticle
+        ? `The user clicked DNA on this article:\nSource: ${seedArticle.source}\nHeadline: "${seedArticle.headline}"\nLean: ${seedArticle.lean}\n\nFind how THIS story spread across sources.\n\n`
+        : "";
+
+      const articleList = raw.map((a, i) =>
+        `${i+1}. Source: ${a.source_id} | Published: ${a.pubDate||"unknown"} | Title: "${a.title}" | URL: ${a.link||""} | Summary: ${(a.description||"").slice(0,200)}`
       ).join("\n");
 
-      const result = await callClaude(`You are analyzing how a news story spread. Here are ${rawArticles.length} articles:\n\n${articleList}\n\nReturn ONLY valid JSON:\n{"storyTitle":"short title","root":{"source":"outlet","date":"date","label":"Original Report","lean":"left/center/right","text":"1 sentence","quote":"key phrase","url":"url","wayback":"https://web.archive.org/web/2025/[url]","children":["a","b"]},"nodes":{"a":{"source":"outlet","date":"date","label":"Follow-up or Reframe or Opinion or Local Angle","lean":"left/center/right","text":"how they covered it differently","quote":"key phrase","quoteChange":"note — start with ⚠ if spin detected","url":"url","wayback":"https://web.archive.org/web/2025/[url]","children":["c"]},"b":{"source":"outlet","date":"date","label":"Follow-up","lean":"left/center/right","text":"coverage note","quote":"phrase","quoteChange":"","url":"url","wayback":"url","children":[]}}}\n\nRules: root = earliest article. Flag spin with ⚠. Try to create a branching tree where root has 2-4 direct children, and some children have their own children. Include all ${rawArticles.length} articles.`);
+      const prompt = `${seedContext}You are a media analyst. Below are ${raw.length} news articles about the same story. Analyze how each source covered it differently.
 
+${articleList}
+
+Return ONLY valid JSON — no markdown, no explanation:
+{
+  "storyTitle": "3-5 word title for this story",
+  "sources": [
+    {
+      "source": "outlet name",
+      "published": "date string",
+      "lean": "left or center or right",
+      "role": "one of: Original Report, Early Pickup, Reframe, Opinion, Local Angle, Follow-up",
+      "headline": "their actual headline",
+      "angle": "1 sentence: how they framed the story differently",
+      "spinFlag": false,
+      "spinNote": "only if spinFlag true — what specifically changed or was misleading",
+      "url": "article url"
+    }
+  ]
+}
+
+Rules:
+- Sort sources by published date, oldest first
+- spinFlag = true only if the framing materially misrepresents the original facts
+- Be specific about each outlet's angle — don't say "covered the story", say HOW they covered it
+- Include ALL ${raw.length} sources`;
+
+      const result = await callClaude(prompt);
       const cleaned = result.replace(/```json|```/g,"").trim();
       const match = cleaned.match(/\{[\s\S]*\}/);
       if (!match) throw new Error("Parse failed");
       const parsed = JSON.parse(match[0]);
-      setTree(parsed);
-      setSelectedId("r");
+
+      setSources(parsed.sources || []);
+      setStoryTitle(parsed.storyTitle || rawQuery.split(" ").slice(0,5).join(" "));
     } catch(e) {
-      setError("Could not trace this story. Try a simpler search term.");
+      console.error("DNA error:", e);
+      setError("Could not trace this story. Try a different search term.");
     }
     setLoading(false);
   };
 
-  const hasWarning = node => node && node.quoteChange && node.quoteChange.startsWith("⚠");
-  const allNodes = tree ? [tree.root, ...Object.values(tree.nodes||{})] : [];
-  const warningCount = allNodes.filter(hasWarning).length;
-  const levels = buildLevels(tree);
-
-  // Selected node detail
-  const getNode = (id) => id === "r" ? tree?.root : tree?.nodes?.[id];
-  const selNode = selectedId ? getNode(selectedId) : null;
-  const selWarn = hasWarning(selNode);
-  const selIsRoot = selectedId === "r";
-  const selColor = selIsRoot ? C.accent : leanColor(selNode?.lean||"center");
-  const pOpen = selectedId ? provOpen.has(selectedId) : false;
+  const spinCount = (sources||[]).filter(s => s.spinFlag).length;
 
   return (
     <div>
+      {/* Header */}
       <h2 style={{fontFamily:F.display,fontSize:22,fontWeight:700,color:C.text,margin:"0 0 4px",letterSpacing:"-0.02em"}}>Story DNA</h2>
-      <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:"0 0 16px",lineHeight:1.5}}>Trace how a story spreads — who published first, what changed, and where spin entered.</p>
+      <p style={{fontFamily:F.text,fontSize:13,color:C.muted,margin:"0 0 18px",lineHeight:1.5}}>Trace how a story spreads — who reported it first and how the framing changed.</p>
 
-      <div style={{display:"flex",gap:8,marginBottom:16}}>
-        <div style={{flex:1,...card(),borderRadius:14,display:"flex",alignItems:"center",padding:"0 14px"}}>
-          <input value={inputVal} onChange={e=>setInputVal(e.target.value)}
-            onKeyDown={e=>{if(e.key==="Enter"&&inputVal.trim())traceDNA(inputVal);}}
-            placeholder="Type a headline or topic…"
-            style={{flex:1,background:"transparent",border:"none",padding:"12px 0",fontSize:14,color:C.text,outline:"none",fontFamily:F.text}}/>
-          {inputVal&&<button onClick={()=>setInputVal("")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13}}>×</button>}
+      {/* Search bar */}
+      <div style={{display:"flex",gap:8,marginBottom:sources||loading ? 20 : 14}}>
+        <div style={{flex:1,background:C.surface,borderRadius:12,display:"flex",alignItems:"center",padding:"0 14px",border:`1px solid ${C.border}`}}>
+          <input
+            value={inputVal}
+            onChange={e=>setInputVal(e.target.value)}
+            onKeyDown={e=>{ if(e.key==="Enter"&&inputVal.trim()) traceDNA(inputVal); }}
+            placeholder="Search a story or topic…"
+            style={{flex:1,background:"transparent",border:"none",padding:"12px 0",fontSize:14,color:C.text,outline:"none",fontFamily:F.text}}
+          />
+          {inputVal && (
+            <button onClick={()=>{ setInputVal(""); setSources(null); setError(null); }}
+              style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
+          )}
         </div>
-        <button onClick={()=>inputVal.trim()&&traceDNA(inputVal)} disabled={loading||!inputVal.trim()}
-          style={{background:"#E8956D",border:"none",borderRadius:14,padding:"0 18px",fontSize:13,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:F.text,opacity:loading||!inputVal.trim()?0.5:1}}>
-          {loading?"…":"Trace"}
+        <button
+          onClick={()=>inputVal.trim()&&traceDNA(inputVal)}
+          disabled={loading||!inputVal.trim()}
+          style={{
+            background:C.orange,border:"none",borderRadius:12,
+            padding:"0 18px",fontSize:13,fontWeight:700,
+            color:"#fff",cursor:"pointer",fontFamily:F.text,
+            opacity:loading||!inputVal.trim()?0.45:1,
+            flexShrink:0,
+          }}>
+          {loading ? "…" : "Trace"}
         </button>
       </div>
 
-      {articles&&articles.length>0&&!tree&&!loading&&(
-        <div style={{marginBottom:20}}>
-          <p style={{fontFamily:F.text,fontSize:11,fontWeight:600,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:"0 0 8px"}}>Quick picks from your feed</p>
-          {articles.slice(0,4).map((a,i)=>(
-            <button key={i} onClick={()=>{const q=a.headline.split(" ").slice(0,6).join(" ");setInputVal(q);traceDNA(q);}}
-              style={{display:"block",width:"100%",textAlign:"left",background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 14px",cursor:"pointer",fontFamily:F.text,fontSize:13,color:C.text,lineHeight:1.4,marginBottom:8}}>
-              {a.headline.split(" ").slice(0,9).join(" ")}…
+      {/* Quick picks — shown before any search */}
+      {!sources && !loading && !error && articles && articles.length > 0 && (
+        <div>
+          <p style={{fontFamily:F.text,fontSize:11,fontWeight:700,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px"}}>From your feed</p>
+          {articles.slice(0,5).map((a,i)=>(
+            <button key={i}
+              onClick={()=>{ const q=a.headline; setInputVal(q); traceDNA(q, a); }}
+              style={{
+                display:"flex",alignItems:"flex-start",gap:10,width:"100%",textAlign:"left",
+                background:C.surface,border:`1px solid ${C.border}`,
+                borderRadius:12,padding:"11px 14px",cursor:"pointer",
+                marginBottom:8,
+              }}>
+              <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:leanColor(a.lean),flexShrink:0,minHeight:20}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{fontFamily:F.text,fontSize:13,color:C.text,margin:0,lineHeight:1.4}}>{a.headline.slice(0,90)}{a.headline.length>90?"…":""}</p>
+                <p style={{fontFamily:F.text,fontSize:11,color:C.muted,margin:"3px 0 0"}}>{a.source}</p>
+              </div>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0,marginTop:2}}><path d="M9 18l6-6-6-6"/></svg>
             </button>
           ))}
         </div>
       )}
 
-      {loading&&(
+      {/* Loading */}
+      {loading && (
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:16,padding:"50px 0"}}>
           <Spinner/>
-          <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:0}}>Building DNA strand…</p>
-          {/* Animated DNA helix preview */}
-          <svg width="60" height="80" viewBox="0 0 60 80">
-            <style>{`@keyframes dnaFloat{0%,100%{opacity:0.3}50%{opacity:1}} .ds{animation:dnaFloat 1.2s ease-in-out infinite;}`}</style>
-            {[0,1,2,3,4,5,6].map(i=>{
-              const y=6+i*11; const wave=Math.sin(i*0.9)*18;
-              return <g key={i}>
-                <line x1={30+wave} y1={y} x2={30-wave} y2={y} stroke={C.divider} strokeWidth="1.5" strokeLinecap="round" className="ds" style={{animationDelay:`${i*0.15}s`}}/>
-                <circle cx={30+wave} cy={y} r="3.5" fill={i%3===0?C.accent:i%3===1?C.left:C.right} className="ds" style={{animationDelay:`${i*0.15}s`}}/>
-                <circle cx={30-wave} cy={y} r="3.5" fill={i%3===0?C.right:i%3===1?C.accent:C.left} className="ds" style={{animationDelay:`${i*0.15+0.05}s`}}/>
-              </g>;
-            })}
-          </svg>
+          <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:0}}>Tracing story…</p>
         </div>
       )}
-      {error&&<p style={{fontFamily:F.text,fontSize:14,color:C.breaking,padding:"20px 0"}}>{error}</p>}
 
-      {tree&&!loading&&(
+      {/* Error */}
+      {error && !loading && (
+        <div style={{background:C.surface,borderRadius:12,padding:"16px 18px",border:`1px solid ${C.border}`}}>
+          <p style={{fontFamily:F.text,fontSize:14,color:C.muted,margin:0}}>{error}</p>
+        </div>
+      )}
+
+      {/* Results */}
+      {sources && !loading && (
         <>
-          {/* Stats row */}
-          <div style={{display:"flex",gap:10,marginBottom:20}}>
-            <div style={{flex:1,background:C.surface,borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
-              <div style={{fontFamily:F.display,fontSize:20,fontWeight:700,color:C.text}}>{allNodes.length}</div>
-              <div style={{fontFamily:F.text,fontSize:11,color:C.muted,marginTop:2}}>Sources</div>
-            </div>
-            <div style={{flex:1,background:warningCount>0?C.breaking+"10":C.surface,borderRadius:10,padding:"12px 14px",textAlign:"center",border:warningCount>0?`1px solid ${C.breaking}30`:"none"}}>
-              <div style={{fontFamily:F.display,fontSize:20,fontWeight:700,color:warningCount>0?C.breaking:C.text}}>{warningCount}</div>
-              <div style={{fontFamily:F.text,fontSize:11,color:warningCount>0?C.breaking:C.muted,marginTop:2}}>Spin flags</div>
-            </div>
-            <div style={{flex:1,background:"#FFF0E8",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
-              <div style={{fontFamily:F.display,fontSize:20,fontWeight:700,color:C.orange}}>{levels.length}</div>
-              <div style={{fontFamily:F.text,fontSize:11,color:C.muted,marginTop:2}}>Generations</div>
-            </div>
-          </div>
-
-          {/* Story title */}
-          <div style={{marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${C.divider}`,display:"flex",alignItems:"center",gap:10}}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round">
-              <path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/>
-            </svg>
-            <p style={{fontFamily:F.display,fontSize:15,fontWeight:700,color:C.text,margin:0}}>{tree.storyTitle}</p>
-          </div>
-
-          {/* Visual SVG Tree — fully calculated positions, no DOM measurements */}
-          {(() => {
-            const NODE_W = 128, NODE_H = 78, H_GAP = 14, V_GAP = 56;
-            // Assign (col, row) to each node
-            const posMap = {}; // id -> {row, col, x, y}
-            levels.forEach((level, li) => {
-              const totalW = level.length * NODE_W + (level.length-1) * H_GAP;
-              level.forEach((item, ci) => {
-                const x = ci * (NODE_W + H_GAP) - totalW/2 + NODE_W/2; // center offset
-                const y = li * (NODE_H + V_GAP);
-                posMap[item.id] = { x, y, row:li, col:ci };
-              });
-            });
-
-            const maxCols = levels.reduce((m,l)=>Math.max(m,l.length),1);
-            const svgW = Math.max(340, maxCols * (NODE_W + H_GAP) + 40);
-            const svgH = levels.length * (NODE_H + V_GAP) + 20;
-            const cx = svgW / 2; // center x of SVG
-
-            // Collect edges
-            const edges = [];
-            levels.forEach((level, li) => {
-              if (li === 0) return;
-              const parentLevel = levels[li-1];
-              level.forEach(item => {
-                const par = parentLevel.find(p => (p.node.children||[]).includes(item.id));
-                if (!par) return;
-                const pp = posMap[par.id], cp = posMap[item.id];
-                if (!pp || !cp) return;
-                const x1 = cx + pp.x, y1 = pp.y + NODE_H;
-                const x2 = cx + cp.x, y2 = cp.y;
-                const midY = (y1+y2)/2;
-                edges.push({ key:`${par.id}-${item.id}`, x1,y1,x2,y2,midY, warn:hasWarning(item.node), nc:leanColor(item.node?.lean||"center") });
-              });
-            });
-
-            return (
-              <div style={{overflowX:"auto",marginBottom:20,borderRadius:14,background:C.surface,border:`1px solid ${C.border}`,padding:"12px 0 8px"}}>
-                <svg width={svgW} height={svgH} style={{display:"block",margin:"0 auto"}}>
-                  <defs>
-                    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-                      <feGaussianBlur stdDeviation="3" result="blur"/>
-                      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                    </filter>
-                    {/* Subtle grid pattern */}
-                    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke={C.divider} strokeWidth="0.5"/>
-                    </pattern>
-                  </defs>
-
-                  {/* Background grid */}
-                  <rect width={svgW} height={svgH} fill="url(#grid)" opacity="0.5"/>
-
-                  {/* Edges */}
-                  {edges.map(e => (
-                    <g key={e.key}>
-                      {/* Glow line for spin */}
-                      {e.warn && <path d={`M${e.x1},${e.y1} C${e.x1},${e.midY} ${e.x2},${e.midY} ${e.x2},${e.y2}`}
-                        fill="none" stroke={C.breaking} strokeWidth="4" opacity="0.15" strokeLinecap="round"/>}
-                      <path d={`M${e.x1},${e.y1} C${e.x1},${e.midY} ${e.x2},${e.midY} ${e.x2},${e.y2}`}
-                        fill="none"
-                        stroke={e.warn ? C.breaking : e.nc}
-                        strokeWidth={e.warn ? 2 : 1.5}
-                        strokeDasharray={e.warn ? "5,3" : "none"}
-                        opacity={0.45}
-                        strokeLinecap="round"/>
-                    </g>
-                  ))}
-
-                  {/* Nodes */}
-                  {levels.map(level => level.map(item => {
-                    const n = item.node;
-                    const pos = posMap[item.id];
-                    if (!pos) return null;
-                    const isRoot = item.id==="r";
-                    const warn = hasWarning(n);
-                    const nc = isRoot ? C.accent : leanColor(n.lean||"center");
-                    const isSel = selectedId===item.id;
-                    const nx = cx + pos.x - NODE_W/2;
-                    const ny = pos.y;
-                    const src = (n.source||"").slice(0,16);
-                    const lbl = (n.label||"").slice(0,18);
-                    const dt = (n.date||"").slice(0,10);
-
-                    return (
-                      <g key={item.id} onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setSelectedId(isSel?null:item.id); }} style={{cursor:"pointer"}}>
-                        {/* Selection halo */}
-                        {isSel && <rect x={nx-3} y={ny-3} width={NODE_W+6} height={NODE_H+6} rx={isSel?16:14} fill={nc} opacity={0.12}/>}
-
-                        {/* Card */}
-                        <rect x={nx} y={ny} width={NODE_W} height={NODE_H} rx={isRoot?14:11}
-                          fill={isSel ? nc : C.card}
-                          stroke={warn ? C.breaking : (isSel ? nc : nc+"55")}
-                          strokeWidth={isSel ? 0 : (warn ? 1.5 : 1)}
-                        />
-                        {/* Left accent stripe */}
-                        {!isSel && <rect x={nx} y={ny+8} width={3.5} height={NODE_H-16} rx={2} fill={nc} opacity={0.8}/>}
-
-                        {/* Source name */}
-                        <text x={nx+14} y={ny+22} fontSize={isRoot?12:11} fontWeight="700"
-                          fill={isSel?"#fff":C.text} fontFamily={F.text}>{src}</text>
-
-                        {/* Label pill bg */}
-                        <rect x={nx+12} y={ny+29} width={Math.min(lbl.length*5.5+10, NODE_W-20)} height={16} rx={4}
-                          fill={isSel?"rgba(255,255,255,0.2)":nc+"20"}/>
-                        <text x={nx+17} y={ny+41} fontSize={9} fontWeight="600"
-                          fill={isSel?"rgba(255,255,255,0.9)":nc} fontFamily={F.text}>{lbl}</text>
-
-                        {/* Date */}
-                        {dt && <text x={nx+14} y={ny+61} fontSize={9}
-                          fill={isSel?"rgba(255,255,255,0.6)":C.muted} fontFamily={F.text}>{dt}</text>}
-
-                        {/* Spin badge */}
-                        {warn && (
-                          <g>
-                            <circle cx={nx+NODE_W-8} cy={ny+8} r={8} fill={C.breaking}/>
-                            <text x={nx+NODE_W-8} y={ny+12} fontSize={8} textAnchor="middle" fill="#fff" fontWeight="700">!</text>
-                          </g>
-                        )}
-
-                        {/* Root crown */}
-                        {isRoot && (
-                          <text x={nx+NODE_W/2} y={ny-6} fontSize={9} textAnchor="middle"
-                            fill={C.accent} fontWeight="600" fontFamily={F.text}>⬟ ORIGIN</text>
-                        )}
-
-                        {/* Children indicator dot */}
-                        {(n.children||[]).length > 0 && !isSel && (
-                          <circle cx={nx+NODE_W/2} cy={ny+NODE_H+5} r={3} fill={nc} opacity={0.5}/>
-                        )}
-                      </g>
-                    );
-                  }))}
-                </svg>
+          {/* Story title + stats */}
+          <div style={{marginBottom:20}}>
+            <p style={{fontFamily:F.display,fontSize:17,fontWeight:700,color:C.text,margin:"0 0 10px",lineHeight:1.3}}>{storyTitle}</p>
+            <div style={{display:"flex",gap:8}}>
+              <div style={{background:C.surface,borderRadius:10,padding:"10px 14px",textAlign:"center",flex:1}}>
+                <p style={{fontFamily:F.display,fontSize:20,fontWeight:700,color:C.text,margin:0}}>{sources.length}</p>
+                <p style={{fontFamily:F.text,fontSize:10,color:C.muted,margin:0,letterSpacing:"0.06em"}}>SOURCES</p>
               </div>
-            );
-          })()}
+              <div style={{
+                background: spinCount > 0 ? C.breaking+"12" : C.surface,
+                border: spinCount > 0 ? `1px solid ${C.breaking}30` : "none",
+                borderRadius:10,padding:"10px 14px",textAlign:"center",flex:1
+              }}>
+                <p style={{fontFamily:F.display,fontSize:20,fontWeight:700,color:spinCount>0?C.breaking:C.text,margin:0}}>{spinCount}</p>
+                <p style={{fontFamily:F.text,fontSize:10,color:C.muted,margin:0,letterSpacing:"0.06em"}}>SPIN FLAGS</p>
+              </div>
+              <div style={{background:C.surface,borderRadius:10,padding:"10px 14px",textAlign:"center",flex:1}}>
+                <div style={{display:"flex",justifyContent:"center",gap:4,marginBottom:2}}>
+                  {["left","center","right"].map(l=>(
+                    <div key={l} style={{width:8,height:8,borderRadius:"50%",background:leanColor(l),opacity: sources.some(s=>s.lean===l)?1:0.2}}/>
+                  ))}
+                </div>
+                <p style={{fontFamily:F.text,fontSize:10,color:C.muted,margin:0,letterSpacing:"0.06em"}}>SPECTRUM</p>
+              </div>
+            </div>
+          </div>
 
-          {/* Selected node detail panel */}
-          {selNode&&(
-            <div style={{...card(),borderRadius:16,padding:"16px",marginBottom:16,borderLeft:`4px solid ${selColor}`,animation:"fadeIn 0.2s ease"}}>
-              <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}`}</style>
-              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,marginBottom:10}}>
-                <div>
-                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                    <span style={{fontFamily:F.text,fontSize:14,fontWeight:700,color:selColor}}>{selNode.source}</span>
-                    {selNode.date&&<span style={{fontSize:11,color:C.muted,fontFamily:F.text}}>· {selNode.date}</span>}
-                    <span style={{fontSize:10,fontWeight:600,fontFamily:F.text,color:selColor,background:selColor+"18",borderRadius:4,padding:"2px 7px"}}>{selNode.label}</span>
-                    {selWarn&&<span style={{fontSize:11,color:C.breaking,fontWeight:600}}>⚠ Spin detected</span>}
+          {/* Timeline */}
+          <div style={{position:"relative"}}>
+            {/* Vertical line */}
+            <div style={{position:"absolute",left:18,top:0,bottom:0,width:2,background:C.divider,borderRadius:1}}/>
+
+            {sources.map((s, i) => {
+              const lc = leanColor(s.lean);
+              const isFirst = i === 0;
+              const isOpen = expanded === i;
+
+              return (
+                <div key={i} style={{display:"flex",gap:0,marginBottom:isOpen?4:12,position:"relative"}}>
+                  {/* Timeline dot */}
+                  <div style={{
+                    width:36,height:36,borderRadius:"50%",flexShrink:0,
+                    background: isFirst ? lc : C.surface,
+                    border:`2px solid ${lc}`,
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    zIndex:1,position:"relative",
+                    boxShadow: isFirst ? `0 0 0 4px ${lc}18` : "none",
+                  }}>
+                    {isFirst ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="4" fill="#fff"/></svg>
+                    ) : s.spinFlag ? (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.breaking} strokeWidth="2.2" strokeLinecap="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    ) : (
+                      <div style={{width:8,height:8,borderRadius:"50%",background:lc}}/>
+                    )}
+                  </div>
+
+                  {/* Card */}
+                  <div style={{flex:1,marginLeft:12}}>
+                    <div
+                      onClick={()=>setExpanded(isOpen ? null : i)}
+                      style={{
+                        background:C.surface,borderRadius:14,padding:"12px 14px",
+                        border:`1px solid ${isOpen ? lc+"60" : C.border}`,
+                        borderLeft:`3px solid ${lc}`,
+                        cursor:"pointer",
+                        transition:"border-color 0.15s",
+                      }}>
+                      {/* Top row */}
+                      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:4}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
+                            <span style={{fontFamily:F.text,fontSize:12,fontWeight:700,color:C.text}}>{s.source}</span>
+                            <span style={{fontFamily:F.text,fontSize:10,color:lc,fontWeight:600,background:lc+"18",borderRadius:6,padding:"1px 6px"}}>{s.lean}</span>
+                            <span style={{fontFamily:F.text,fontSize:10,color:C.muted,background:C.card,borderRadius:6,padding:"1px 6px",border:`1px solid ${C.divider}`}}>{s.role}</span>
+                            {isFirst && <span style={{fontFamily:F.text,fontSize:10,color:C.accent,fontWeight:700}}>FIRST</span>}
+                            {s.spinFlag && (
+                              <span style={{fontFamily:F.text,fontSize:10,color:C.breaking,fontWeight:700,background:C.breaking+"12",borderRadius:6,padding:"1px 6px"}}>⚠ Spin</span>
+                            )}
+                          </div>
+                          <p style={{fontFamily:F.text,fontSize:13,fontWeight:600,color:C.text,margin:0,lineHeight:1.35}}>{s.headline}</p>
+                        </div>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0,transform:isOpen?"rotate(90deg)":"rotate(0deg)",transition:"transform 0.2s",marginTop:2}}><path d="M9 18l6-6-6-6"/></svg>
+                      </div>
+                      {s.published && (
+                        <p style={{fontFamily:F.text,fontSize:10,color:C.muted,margin:0}}>{s.published}</p>
+                      )}
+                    </div>
+
+                    {/* Expanded detail */}
+                    {isOpen && (
+                      <div style={{
+                        background:C.card,borderRadius:"0 0 14px 14px",
+                        padding:"14px 16px",marginTop:-4,
+                        border:`1px solid ${lc+"40"}`,borderTop:"none",
+                        borderLeft:`3px solid ${lc}`,
+                        animation:"fadeIn 0.15s ease",
+                      }}>
+                        <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:"0 0 12px",lineHeight:1.6}}>{s.angle}</p>
+                        {s.spinFlag && s.spinNote && (
+                          <div style={{background:C.breaking+"0d",border:`1px solid ${C.breaking}25`,borderRadius:8,padding:"10px 12px",marginBottom:12}}>
+                            <p style={{fontFamily:F.text,fontSize:11,fontWeight:700,color:C.breaking,margin:"0 0 3px",letterSpacing:"0.05em"}}>SPIN DETECTED</p>
+                            <p style={{fontFamily:F.text,fontSize:12,color:C.breaking,margin:0,lineHeight:1.5}}>{s.spinNote}</p>
+                          </div>
+                        )}
+                        {s.url && (
+                          <button
+                            onClick={e=>{e.stopPropagation();window.open(s.url,"_blank","noopener,noreferrer");}}
+                            style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",fontFamily:F.text,fontSize:12,color:C.muted,cursor:"pointer"}}>
+                            Read article ↗
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <button onClick={()=>setSelectedId(null)} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:14,padding:"2px 6px"}}>×</button>
-              </div>
-              <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:"0 0 12px",lineHeight:1.6}}>{selNode.text}</p>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:pOpen?12:0}}>
-                <button onClick={e=>togProv(e,selectedId)} style={{fontSize:11,fontFamily:F.text,color:pOpen?C.accent:C.muted,background:pOpen?C.accentSoft:C.surface,border:`1px solid ${pOpen?C.accent+"40":C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>{pOpen?"Hide":"Verify"}</button>
-                {selNode.url&&<button onClick={e=>{e.stopPropagation();window.open(selNode.url,"_blank","noopener,noreferrer");}} style={{fontSize:11,fontFamily:F.text,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>Article ↗</button>}
-                {selNode.wayback&&<button onClick={e=>{e.stopPropagation();window.open(selNode.wayback,"_blank","noopener,noreferrer");}} style={{fontSize:11,fontFamily:F.text,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",cursor:"pointer"}}>Archive</button>}
-              </div>
-              {pOpen&&(
-                <div style={{background:C.surface,borderRadius:10,padding:"14px 16px",border:`1px solid ${selWarn?C.breaking+"30":C.border}`}}>
-                  {selNode.quote&&<div style={{marginBottom:10}}>
-                    <p style={{fontFamily:F.text,fontSize:10,fontWeight:600,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:"0 0 5px"}}>{selIsRoot?"Original Quote":"As Reported"}</p>
-                    <p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:0,lineHeight:1.6,paddingLeft:10,borderLeft:`3px solid ${selColor}`,fontStyle:"italic"}}>"{selNode.quote}"</p>
-                  </div>}
-                  {selNode.quoteChange&&<div>
-                    <p style={{fontFamily:F.text,fontSize:10,fontWeight:600,color:selWarn?C.breaking:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:"0 0 5px"}}>{selWarn?"⚠ Narrative Shift":"Editorial Note"}</p>
-                    <p style={{fontFamily:F.text,fontSize:12,color:selWarn?C.breaking:C.sub,margin:0,lineHeight:1.6,background:selWarn?C.breaking+"08":"transparent",borderRadius:6,padding:selWarn?"6px 10px":0}}>{selNode.quoteChange.replace("⚠ ","")}</p>
-                  </div>}
-                  {selNode.wayback&&<div style={{marginTop:10,paddingTop:8,borderTop:`1px solid ${C.divider}`,display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:11,color:C.muted,fontFamily:F.text}}>Archived:</span>
-                    <span onClick={e=>{e.stopPropagation();window.open(selNode.wayback,"_blank","noopener,noreferrer");}} style={{fontSize:11,color:C.accent,fontFamily:F.text,cursor:"pointer",textDecoration:"underline"}}>Wayback Machine ↗</span>
-                  </div>}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Legend */}
-          <div style={{display:"flex",gap:16,flexWrap:"wrap",paddingTop:8,borderTop:`1px solid ${C.divider}`}}>
-            {[["Left-leaning",C.left],["Center",C.accent],["Right-leaning",C.right]].map(([label,color])=>(
-              <div key={label} style={{display:"flex",alignItems:"center",gap:5}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:color}}/>
-                <span style={{fontFamily:F.text,fontSize:11,color:C.muted}}>{label}</span>
-              </div>
-            ))}
-            <div style={{display:"flex",alignItems:"center",gap:5}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:C.breaking}}/>
-              <span style={{fontFamily:F.text,fontSize:11,color:C.muted}}>⚠ Spin detected</span>
-            </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -2091,6 +2069,7 @@ function ClarionFinal() {
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [compareStory, setCompareStory] = useState(null);
+  const [dnaQuery, setDnaQuery] = useState(null); // article object passed from feed DNA button
   const [expandedCard, setExpandedCard] = useState(null); // id of expanded inline card
   const [prevTab, setPrevTab] = useState(null);
   const [tabTransition, setTabTransition] = useState(false);
@@ -2776,7 +2755,7 @@ function ClarionFinal() {
                                   </button>
                                   <button onClick={()=>setVerifying(a)} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}>Fact Check</button>
                                   <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
-                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
+                                  <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a); setTab("dna"); }} style={{...glassBtn(false),padding:"7px 12px",fontSize:12}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
                                 </div>
                               </div>
                             )}
@@ -2850,7 +2829,7 @@ function ClarionFinal() {
                                       {bookmarks.includes(a.id) ? "Saved" : "Save"}
                                     </button>
                                     <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); setCompareStory(a); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>Compare</button>
-                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a.headline); setTab("dna"); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
+                                    <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(7); setDnaQuery(a); setTab("dna"); }} style={{...glassBtn(false),padding:"6px 10px",fontSize:11}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><path d="M7 3c0 4 10 4 10 8S7 15 7 19M17 3c0 4-10 4-10 8s10 4 10 8"/></svg>DNA</button>
                                   </div>
                                 </div>
                               )}
@@ -3014,7 +2993,7 @@ function ClarionFinal() {
         )}
 
 
-        {tab==="dna" && <div style={{paddingTop:20}}><DNATree articles={all}/></div>}
+        {tab==="dna" && <div style={{paddingTop:20}}><DNATree articles={all} initialArticle={dnaQuery} onClearQuery={()=>setDnaQuery(null)}/></div>}
 
         {tab==="profile" && (
           <div style={{paddingTop:20}}>
