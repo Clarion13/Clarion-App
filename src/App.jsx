@@ -1112,8 +1112,7 @@ function DNATree({ articles, initialArticle, onClearQuery }) {
       traceDNA(q, initialArticle);
       if (onClearQuery) onClearQuery();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialArticle?.id]);
+  }, [initialArticle?.id]); // eslint-disable-line
 
   const traceDNA = async (rawQuery, seedArticle = null) => {
     if (!rawQuery.trim()) return;
