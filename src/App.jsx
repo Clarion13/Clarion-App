@@ -56,7 +56,7 @@ const glassBtn = solidBtn;
 
 const ARTICLES = [];
 
-const CATS = ["All","Breaking","Politics","Tech","Business","Science","World","Health","Uplifting"];
+const CATS = ["All","Politics","World","Tech","Business","Science","Sports","Music","Health","Uplifting"];
 const NAV  = [
   {id:"feed",       label:"Feed"},
   {id:"map",        label:"Map"},
@@ -2374,7 +2374,7 @@ function ClarionFinal() {
       const lineList = slice.map((a, i) =>
         (b+i+1) + `. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}"`
       ).join("\n");
-      const prompt = `Analyze these ${slice.length} news headlines. Return ONLY a JSON array with ${slice.length} objects. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Uplifting OR Breaking","region":"primary city or country","breaking":false,"locations":["up to 3 city or country names — empty array if domestic only"]}. Base lean on source bias.\n\n${lineList}`;
+      const prompt = `Analyze these ${slice.length} news headlines. Return ONLY a JSON array with ${slice.length} objects. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Sports OR Music OR Uplifting OR Breaking","region":"primary city or country","breaking":false,"locations":["up to 3 city or country names — empty array if domestic only"]}. Base lean on source bias.\n\n${lineList}`;
 
       try {
         const raw = await callClaude(prompt);
@@ -2669,7 +2669,7 @@ function ClarionFinal() {
             )}
 
             {searchResults === null && feed.length > 0 && (() => {
-              const SECTION_CATS = ["Politics","World","Tech","Business","Science","Health","Uplifting","Breaking"];
+              const SECTION_CATS = ["Politics","World","Tech","Business","Science","Sports","Music","Health","Uplifting"];
 
               // ── TOP STORIES: pick the best 6 stories across all categories ──
               // Score = breaking bonus + has image bonus + recency (index)
@@ -2853,11 +2853,12 @@ function ClarionFinal() {
               );
             })()}
           </>
-        )} && (
-          <div style={{paddingTop:20}}>
-            <HeatMap articles={all} onRegion={r=>{setRegionFilter(r===regionFilter?null:r);setTab("feed");}}/>
-          </div>
         )}
+
+        {/* MAP — always mounted so Mapbox doesn't re-init; hidden via display:none on other tabs */}
+        <div style={{display:tab==="map"?"block":"none",paddingTop:20,overflow:"hidden",contain:"layout paint",height:tab==="map"?"auto":0,minHeight:0}}>
+          <HeatMap articles={all} onRegion={r=>{setRegionFilter(r===regionFilter?null:r);setTab("feed");}}/>
+        </div>
 
         {tab==="balance" && (
           <div style={{paddingTop:20}}>
