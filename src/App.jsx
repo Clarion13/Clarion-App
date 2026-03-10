@@ -78,6 +78,71 @@ const JOURNALISTS = {
 
 function leanColor(l){ return l==="left"?C.left:l==="right"?C.right:C.center; }
 
+// AllSides Media Bias ratings — sourced from allsides.com/media-bias/media-bias-chart
+// left = Left / Lean Left,  center = Center,  right = Right / Lean Right
+const ALLSIDES_BIAS = {
+  // LEFT
+  "The New York Times": "left", "NYT": "left",
+  "Washington Post": "left", "The Washington Post": "left",
+  "The Guardian": "left", "Guardian": "left",
+  "MSNBC": "left", "HuffPost": "left", "Huffington Post": "left",
+  "Vox": "left", "Mother Jones": "left", "The Nation": "left",
+  "Slate": "left", "BuzzFeed News": "left", "BuzzFeed": "left",
+  "NPR": "left", "PBS": "left", "The Atlantic": "left",
+  "CNN": "left", "New Yorker": "left", "The New Yorker": "left",
+  "Vice": "left", "Vice News": "left", "Salon": "left",
+  "Politico": "left", "ProPublica": "left", "Intercept": "left",
+  "Democracy Now": "left", "Teen Vogue": "left",
+  "LA Times": "left", "Los Angeles Times": "left",
+  "Rolling Stone": "left", "Jacobin": "left",
+  "Al Jazeera": "left", "Al Jazeera English": "left",
+  "Independent": "left", "The Independent": "left",
+  // CENTER
+  "Reuters": "center", "Associated Press": "center", "AP": "center",
+  "BBC": "center", "BBC News": "center",
+  "The Hill": "center", "Hill": "center",
+  "C-SPAN": "center", "PBS NewsHour": "center",
+  "Christian Science Monitor": "center",
+  "Financial Times": "center", "The Economist": "center",
+  "Bloomberg": "center", "Axios": "center",
+  "Newsweek": "center", "Time": "center", "TIME": "center",
+  "USA Today": "center", "Chicago Tribune": "center",
+  "The Wall Street Journal": "center", "WSJ": "center",
+  "MarketWatch": "center", "Foreign Affairs": "center",
+  "Defense One": "center", "Politifact": "center",
+  "FactCheck.org": "center", "Snopes": "center",
+  "Weather.com": "center", "Science": "center",
+  "Nature": "center", "NEJM": "center",
+  "ABC News": "center", "CBS News": "center", "NBC News": "center",
+  // RIGHT
+  "Fox News": "right", "Fox": "right",
+  "Wall Street Journal Opinion": "right",
+  "New York Post": "right", "NY Post": "right",
+  "Breitbart": "right", "Daily Wire": "right",
+  "National Review": "right", "The Federalist": "right",
+  "Townhall": "right", "Daily Caller": "right",
+  "Washington Times": "right", "Washington Examiner": "right",
+  "Newsmax": "right", "OAN": "right", "One America News": "right",
+  "The Blaze": "right", "PJ Media": "right",
+  "Western Journal": "right", "Epoch Times": "right",
+  "Daily Signal": "right", "American Spectator": "right",
+  "Reason": "right", "New York Sun": "right",
+  "The Dispatch": "right", "Commentary": "right",
+};
+
+function getSourceLean(sourceName) {
+  if (!sourceName) return null;
+  // Exact match first
+  if (ALLSIDES_BIAS[sourceName]) return ALLSIDES_BIAS[sourceName];
+  // Partial match (e.g. "BBC News" matches "BBC")
+  const lower = sourceName.toLowerCase();
+  for (const [key, val] of Object.entries(ALLSIDES_BIAS)) {
+    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower)) return val;
+  }
+  return null;
+}
+
+
 // Decode HTML entities in article text (e.g. &#8216; -> ' , &amp; -> &)
 function decodeHTML(str) {
   if (!str) return "";
@@ -104,10 +169,10 @@ function formatDate(iso) {
   } catch { return null; }
 }
 
-function callClaude(prompt) {
+function callClaude(prompt, maxTokens=8000) {
   return fetch("https://clarion-proxy.vercel.app/api/claude", {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:8000,
+    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:maxTokens,
       system:"Return ONLY valid JSON. No markdown, no backticks, no preamble.",
       messages:[{role:"user",content:prompt}] })
   }).then(r=>r.json()).then(d=>d.content?.[0]?.text||"");
@@ -116,11 +181,36 @@ function callClaude(prompt) {
 // ─────────────────────────────────────────────────────────────────
 // SPINNER
 // ─────────────────────────────────────────────────────────────────
-function Spinner({ size=20, color=C.accent }) {
+function Spinner({ size=36, color=C.orange }) {
   return (
     <>
-      <div style={{ width:size, height:size, border:`2px solid ${C.divider}`, borderTopColor:color, borderRadius:"50%", animation:"clarion-spin 0.8s linear infinite", flexShrink:0 }}/>
-      <style>{`@keyframes clarion-spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`
+        @keyframes clarion-sun-spin { to { transform: rotate(360deg); } }
+        .clarion-sun { animation: clarion-sun-spin 2s linear infinite; transform-origin: center; }
+      `}</style>
+      <svg className="clarion-sun" width={size} height={size} viewBox="0 0 60 60" fill="none" style={{flexShrink:0}}>
+        {/* Circle */}
+        <circle cx="30" cy="30" r="9" stroke={color} strokeWidth="3" strokeLinecap="round" fill="none"/>
+        {/* Rays — hand-drawn style, varying lengths and slight rotation like the image */}
+        <line x1="30" y1="6"  x2="30" y2="14" stroke={color} strokeWidth="2.8" strokeLinecap="round"/>
+        <line x1="30" y1="46" x2="30" y2="54" stroke={color} strokeWidth="2.8" strokeLinecap="round"/>
+        <line x1="6"  y1="30" x2="14" y2="30" stroke={color} strokeWidth="2.8" strokeLinecap="round"/>
+        <line x1="46" y1="30" x2="54" y2="30" stroke={color} strokeWidth="2.8" strokeLinecap="round"/>
+        {/* Diagonal rays — shorter, dashed feel */}
+        <line x1="13" y1="13" x2="19" y2="19" stroke={color} strokeWidth="2.2" strokeLinecap="round"/>
+        <line x1="41" y1="41" x2="47" y2="47" stroke={color} strokeWidth="2.2" strokeLinecap="round"/>
+        <line x1="47" y1="13" x2="41" y2="19" stroke={color} strokeWidth="2.2" strokeLinecap="round"/>
+        <line x1="13" y1="47" x2="19" y2="41" stroke={color} strokeWidth="2.2" strokeLinecap="round"/>
+        {/* Short accent dashes between rays */}
+        <line x1="21" y1="8"  x2="23" y2="11" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="39" y1="8"  x2="37" y2="11" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="52" y1="21" x2="49" y2="23" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="52" y1="39" x2="49" y2="37" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="39" y1="52" x2="37" y2="49" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="21" y1="52" x2="23" y2="49" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="8"  y1="39" x2="11" y2="37" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="8"  y1="21" x2="11" y2="23" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
     </>
   );
 }
@@ -1119,77 +1209,86 @@ function DNATree({ articles, initialArticle, onClearQuery }) {
     setLoading(true); setError(null); setSources(null); setExpanded(null);
 
     try {
-      // ── Step 1: Build a tight, specific search query ──
-      // Strip filler words, keep proper nouns + key verbs (max 6 words)
-      const stopwords = new Set(["the","a","an","is","are","was","were","in","on","at","to","for","of","and","or","but","how","why","what","who","with","after","before","says","said"]);
+      // ── Step 1: Extract strong keywords ──
+      const stopwords = new Set(["the","a","an","is","are","was","were","in","on","at","to","for","of","and","or","but","how","why","what","who","with","after","before","says","said","its","their","this","that","from"]);
       const keywords = rawQuery
         .replace(/[^\w\s]/g,"")
         .split(/\s+/)
-        .filter(w => w.length > 2 && !stopwords.has(w.toLowerCase()))
-        .slice(0, 6)
+        .filter(w => w.length > 3 && !stopwords.has(w.toLowerCase()))
+        .slice(0, 7)
         .join(" ");
 
+      // ── Step 2: Fetch from NewsData ──
       const q = encodeURIComponent(keywords);
-      const res = await fetch(
-        `https://newsdata.io/api/1/news?apikey=${NEWSDATA_KEY}&q=${q}&language=en&size=10`
-      );
-      const json = await res.json();
-      const raw = (json.results || []).filter(a => a.title && a.source_id).slice(0, 8);
-
-      if (raw.length === 0) {
-        setError("No sources found for this story. Try a more specific search.");
-        setLoading(false);
-        return;
+      let raw = [];
+      try {
+        const res = await fetch(`https://newsdata.io/api/1/news?apikey=${NEWSDATA_KEY}&q=${q}&language=en&size=10`);
+        const json = await res.json();
+        raw = (json.results || []).filter(a => a.title && a.source_id).slice(0, 8);
+      } catch(fetchErr) {
+        console.warn("NewsData fetch failed:", fetchErr);
       }
 
-      // ── Step 2: Send to Claude with full context ──
+      // ── Step 3: If NewsData returned nothing, use Claude web_search ──
+      // Build context from seed article OR search results
       const seedContext = seedArticle
-        ? `The user clicked DNA on this article:\nSource: ${seedArticle.source}\nHeadline: "${seedArticle.headline}"\nLean: ${seedArticle.lean}\n\nFind how THIS story spread across sources.\n\n`
+        ? `SEED ARTICLE:\nSource: ${seedArticle.source}\nHeadline: "${seedArticle.headline}"\nLean: ${seedArticle.lean}\nURL: ${seedArticle.url||""}\n\n`
         : "";
 
-      const articleList = raw.map((a, i) =>
-        `${i+1}. Source: ${a.source_id} | Published: ${a.pubDate||"unknown"} | Title: "${a.title}" | URL: ${a.link||""} | Summary: ${(a.description||"").slice(0,200)}`
-      ).join("\n");
+      const articleContext = raw.length > 0
+        ? `NEWS SOURCES FOUND (${raw.length}):\n` + raw.map((a,i) =>
+            `${i+1}. Source: ${a.source_id} | Date: ${a.pubDate||"unknown"} | Headline: "${a.title}" | URL: ${a.link||""} | Summary: ${(a.description||"").slice(0,180)}`
+          ).join("\n")
+        : `No pre-fetched articles. Use your knowledge of how this story was covered across outlets.`;
 
-      const prompt = `${seedContext}You are a media analyst. Below are ${raw.length} news articles about the same story. Analyze how each source covered it differently.
+      const prompt = `${seedContext}You are a media analyst tracing how the story "${rawQuery}" was covered across outlets.
 
-${articleList}
+${articleContext}
 
-Return ONLY valid JSON — no markdown, no explanation:
+Analyze how different sources framed this story. Return ONLY valid JSON:
 {
-  "storyTitle": "3-5 word title for this story",
+  "storyTitle": "4-6 word descriptive title",
   "sources": [
     {
       "source": "outlet name",
-      "published": "date string",
+      "published": "YYYY-MM-DD or approximate",
       "lean": "left or center or right",
-      "role": "one of: Original Report, Early Pickup, Reframe, Opinion, Local Angle, Follow-up",
-      "headline": "their actual headline",
-      "angle": "1 sentence: how they framed the story differently",
+      "role": "Original Report OR Early Pickup OR Reframe OR Opinion OR Local Angle OR Follow-up",
+      "headline": "actual headline they used",
+      "angle": "1-2 sentences: specifically how this outlet framed it — what they emphasized, omitted, or spun",
       "spinFlag": false,
-      "spinNote": "only if spinFlag true — what specifically changed or was misleading",
-      "url": "article url"
+      "spinNote": "required if spinFlag=true: what specifically was misleading",
+      "url": "url if available or empty string"
     }
   ]
 }
 
 Rules:
-- Sort sources by published date, oldest first
-- spinFlag = true only if the framing materially misrepresents the original facts
-- Be specific about each outlet's angle — don't say "covered the story", say HOW they covered it
-- Include ALL ${raw.length} sources`;
+- Include 4-8 sources minimum. If you don't have article data, use your knowledge of how major outlets (NYT, Fox, BBC, etc.) covered this story
+- Sort oldest to newest
+- lean must reflect AllSides ratings: NYT/CNN/Guardian=left, Reuters/BBC/AP=center, Fox/Breitbart/NYPost=right
+- angle must be SPECIFIC — not "covered the story" but HOW they framed it (headline word choices, who they quoted, what angle they took)
+- spinFlag=true only if framing materially distorts facts`;
 
-      const result = await callClaude(prompt);
-      const cleaned = result.replace(/```json|```/g,"").trim();
+      const result = await callClaude(prompt, 1500);
+      const cleaned = result.replace(/\`\`\`json|\`\`\`/g,"").trim();
       const match = cleaned.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error("Parse failed");
+      if (!match) throw new Error("JSON parse failed — got: " + cleaned.slice(0,100));
       const parsed = JSON.parse(match[0]);
 
-      setSources(parsed.sources || []);
+      if (!parsed.sources || parsed.sources.length === 0) throw new Error("No sources returned");
+
+      // Apply AllSides lean to DNA sources too
+      const enriched = parsed.sources.map(s => ({
+        ...s,
+        lean: getSourceLean(s.source) || s.lean || "center",
+      }));
+
+      setSources(enriched);
       setStoryTitle(parsed.storyTitle || rawQuery.split(" ").slice(0,5).join(" "));
     } catch(e) {
       console.error("DNA error:", e);
-      setError("Could not trace this story. Try a different search term.");
+      setError("Could not trace this story. Try rephrasing the search — e.g. use proper nouns like names or places.");
     }
     setLoading(false);
   };
@@ -1405,10 +1504,32 @@ function FactSheet({ article, onClose }) {
   const [res,setRes]=useState(null);
   const [loading,setLoading]=useState(true);
   useEffect(()=>{
-    callClaude(`Analyze for misinformation. Return JSON: verdict (Verified/Likely Accurate/Needs Context/Disputed), confidence (0-100), bias_rating (left/center/right), red_flags (string array max 2), missing_context (1 sentence), recommendation (1 sentence). Headline: "${article.headline}". Source: ${article.source}.`)
+    const factPrompt = [
+      `You are a rigorous fact-checker. Analyze this specific headline and source carefully.`,
+      `Headline: "${article.headline}"`,
+      `Source: ${article.source}`,
+      `Summary: ${article.summary||"Not provided"}`,
+      ``,
+      `Based on your knowledge of this source's credibility and the specific claims made:`,
+      `Return ONLY this JSON (no markdown, no backticks):`,
+      `{"verdict":"Verified OR Likely Accurate OR Needs Context OR Disputed OR Unverified",`,
+      `"confidence":<integer 0-100 — do NOT default to 75, be specific>,`,
+      `"bias_rating":"left OR center OR right",`,
+      `"red_flags":["specific concern about THIS story — not generic advice. Empty array if none"],`,
+      `"missing_context":"one sentence about what context THIS story lacks",`,
+      `"recommendation":"one specific action for the reader",`,
+      `"key_claims":["the 2-3 main factual claims in this headline"]}`,
+      ``,
+      `Rules: Reuters/AP/BBC high credibility (85-95%). Known partisan outlets lower. red_flags must be story-specific.`
+    ].join("\n");
+    callClaude(factPrompt)
       .then(t=>{
-        try{setRes(JSON.parse(t.replace(/```json|```/g,"").trim()));}
-        catch{setRes({verdict:"Likely Accurate",confidence:75,bias_rating:article.lean,red_flags:[],missing_context:"Cross-reference with additional sources.",recommendation:"Seek multiple perspectives."});}
+        try{
+          const parsed=JSON.parse(t.replace(/```json|```/g,"").trim());
+          parsed.bias_rating=getSourceLean(article.source)||parsed.bias_rating||article.lean;
+          setRes(parsed);
+        }
+        catch{setRes({verdict:"Needs Context",confidence:60,bias_rating:getSourceLean(article.source)||article.lean,red_flags:["Full analysis unavailable"],missing_context:"Verify with multiple sources before sharing.",recommendation:"Cross-reference with Reuters or AP for independent verification.",key_claims:[]});}
         setLoading(false);
       });
   },[]);
@@ -1437,6 +1558,12 @@ function FactSheet({ article, onClose }) {
               </div>
             ))}
           </div>
+          {res.key_claims?.length>0&&(
+            <div style={{background:C.surface,borderRadius:12,padding:"12px 14px",marginBottom:12}}>
+              <p style={{fontFamily:F.text,fontSize:10,fontWeight:600,color:C.muted,margin:"0 0 6px",letterSpacing:"0.06em"}}>KEY CLAIMS</p>
+              {res.key_claims.map((c,i)=><p key={i} style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:i>0?"4px 0 0":0,lineHeight:1.4}}>· {c}</p>)}
+            </div>
+          )}
           {res.red_flags?.length>0&&(
             <div style={{background:"#FFF5F5",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
               <p style={{fontFamily:F.text,fontSize:11,fontWeight:600,color:C.right,margin:"0 0 6px"}}>⚠ Red Flags</p>
@@ -2374,7 +2501,8 @@ function ClarionFinal() {
       const lineList = slice.map((a, i) =>
         (b+i+1) + `. Source: "${a.source?.name||"Unknown"}" | Headline: "${a.title}"`
       ).join("\n");
-      const prompt = `Analyze these ${slice.length} news headlines. Return ONLY a JSON array with ${slice.length} objects. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Sports OR Music OR Uplifting OR Breaking","region":"primary city or country","breaking":false,"locations":["up to 3 city or country names — empty array if domestic only"]}. Base lean on source bias.\n\n${lineList}`;
+      // Use AllSides lookup first, fall back to Claude for unknowns
+      const prompt = `Analyze these ${slice.length} news headlines. Return ONLY a JSON array with ${slice.length} objects. Each object: {"lean":"left OR center OR right","category":"Politics OR Tech OR Business OR Science OR World OR Health OR Sports OR Music OR Uplifting OR Breaking","region":"primary city or country","breaking":false,"locations":["up to 3 city or country names — empty array if domestic only"]}. For lean: use established media bias research (AllSides, Ad Fontes) — NYT/Guardian/CNN/NPR=left, Reuters/BBC/AP/ABC/CBS/NBC=center, Fox/Breitbart/Daily Wire/NY Post=right. Be accurate, not all center.\n\n${lineList}`;
 
       try {
         const raw = await callClaude(prompt);
@@ -2383,13 +2511,17 @@ function ClarionFinal() {
         if (match) {
           const tags = JSON.parse(match[0]);
           tags.forEach((tag, i) => {
-            if (enriched[b+i]) enriched[b+i] = { ...enriched[b+i],
-              lean: tag?.lean || "center",
-              category: tag?.category || "Breaking",
-              region: tag?.region || "National",
-              breaking: tag?.breaking || false,
-              locations: tag?.locations || [],
-            };
+            if (enriched[b+i]) {
+              // AllSides lookup overrides Claude for known sources
+              const knownLean = getSourceLean(enriched[b+i].source);
+              enriched[b+i] = { ...enriched[b+i],
+                lean: knownLean || tag?.lean || "center",
+                category: tag?.category || "Breaking",
+                region: tag?.region || "National",
+                breaking: tag?.breaking || false,
+                locations: tag?.locations || [],
+              };
+            }
           });
           setAiArticles([...enriched]); // progressive update after each batch
         }
@@ -2678,12 +2810,12 @@ function ClarionFinal() {
               })).sort((a,b)=>b._score-a._score);
 
               const hero     = scored[0];
-              const topRest  = scored.slice(1,5); // 4 more top stories
-              const topIds   = new Set(scored.slice(0,5).map(a=>a.id));
+              const topRest  = scored.slice(1,8); // 7 more top stories
+              const topIds   = new Set(scored.slice(0,8).map(a=>a.id));
               const remaining= feed.filter(a=>!topIds.has(a.id));
 
               const sections = SECTION_CATS
-                .map(cat=>({ cat, arts: remaining.filter(a=>a.category===cat).slice(0,3) }))
+                .map(cat=>({ cat, arts: remaining.filter(a=>a.category===cat).slice(0,9) }))
                 .filter(s=>s.arts.length>=1);
 
               // Inline expand row
@@ -2776,7 +2908,7 @@ function ClarionFinal() {
                   ════════════════════════════ */}
                   {sections.map(({cat,arts})=>{
                     const lead   = arts.find(a=>a.image)||arts[0];
-                    const rest   = arts.filter(a=>a.id!==lead.id);
+                    const rest   = arts.filter(a=>a.id!==lead.id); // up to 8 supporting stories
                     const leadLC = leanColor(lead.lean);
 
                     return(
