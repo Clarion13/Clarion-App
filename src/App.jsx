@@ -2441,7 +2441,7 @@ function ClarionFinal() {
     if (tid) { clearTimeout(parseInt(tid)); localStorage.removeItem("clarion_notif_tid"); }
   };
 
-  const CACHE_KEY = "clarion_feed_v3";
+  const CACHE_KEY = "clarion_feed_v5"; // v5: AllSides lean + 100 articles
   const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
   const loadAI = async (forceRefresh = false) => {
@@ -2468,7 +2468,7 @@ function ClarionFinal() {
     try {
       const res = await fetch("https://clarion-proxy.vercel.app/api/gnews");
       const json = await res.json();
-      articles = (json.articles || []).filter(a => a.title && a.url).slice(0, 40);
+      articles = (json.articles || []).filter(a => a.title && a.url).slice(0, 100);
     } catch(e) {
       console.error("Feed fetch failed:", e);
       setAiLoading(false);
@@ -2478,22 +2478,41 @@ function ClarionFinal() {
     if (articles.length === 0) { setAiLoading(false); return; }
 
     // ── SHOW ARTICLES IMMEDIATELY (unenriched) so feed appears instantly ──
-    const initial = articles.map((a, i) => ({
-      id: 200 + i,
-      headline: a.title,
-      summary: a.description || "",
-      source: a.source?.name || "Unknown",
-      url: a.url,
-      image: a.image || null,
-      publishedAt: a.publishedAt || null,
-      lean: "center", category: "Breaking", time: "Live",
-      breaking: false, region: "National", verified: true, locations: [],
-    }));
+    // Keyword-based category pre-assignment so articles show in sections even before enrichment
+    const guessCategory = (title="", src="") => {
+      const t = (title + " " + src).toLowerCase();
+      if (/trump|biden|congress|senate|election|democrat|republican|white house|parliament|minister|president|vote|policy|supreme court/.test(t)) return "Politics";
+      if (/war|ukraine|russia|israel|gaza|nato|china|iran|military|missile|troops|attack|conflict|diplomacy/.test(t)) return "World";
+      if (/apple|google|microsoft|ai |openai|meta|tech|software|iphone|android|cybersecurity|startup|silicon/.test(t)) return "Tech";
+      if (/stock|market|economy|fed|inflation|gdp|earnings|bank|trade|recession|crypto|bitcoin|finance|dollar/.test(t)) return "Business";
+      if (/climate|nasa|science|study|research|space|discovery|ocean|species|physics|genome|earthquake/.test(t)) return "Science";
+      if (/health|cancer|covid|vaccine|hospital|drug|fda|mental|obesity|disease|medical|surgery/.test(t)) return "Health";
+      if (/football|soccer|nfl|nba|mlb|tennis|olympics|sport|championship|league|athlete|world cup/.test(t)) return "Sports";
+      if (/music|album|concert|taylor|beyonce|artist|band|singer|grammy|billboard|spotify|pop|rapper/.test(t)) return "Music";
+      if (/rescue|charity|award|hero|community|inspir|hope|kind|volunteer|celebration|win|joy/.test(t)) return "Uplifting";
+      return "World"; // sensible fallback — not Breaking
+    };
+
+    const initial = articles.map((a, i) => {
+      const srcName = a.source?.name || "Unknown";
+      return {
+        id: 200 + i,
+        headline: a.title,
+        summary: a.description || "",
+        source: srcName,
+        url: a.url,
+        image: a.image || null,
+        publishedAt: a.publishedAt || null,
+        lean: getSourceLean(srcName) || "center",
+        category: guessCategory(a.title, srcName),
+        time: "Live", breaking: false, region: "National", verified: true, locations: [],
+      };
+    });
     setAiArticles(initial);
     setAiLoading(false); // hide spinner — feed visible, enrichment runs quietly
 
     // ── ENRICH IN BATCHES OF 15 — first batch appears in ~2s ──
-    const BATCH = 15;
+    const BATCH = 25; // larger batches = fewer API calls for 100 articles
     const enriched = [...initial];
 
     for (let b = 0; b < articles.length; b += BATCH) {
@@ -2572,7 +2591,7 @@ function ClarionFinal() {
         url: a.link,
         image: a.image_url || null,
         publishedAt: a.pubDate || null,
-        lean: "center", category: "Breaking", time: "Live",
+        lean: getSourceLean(a.source_id) || "center", category: "Breaking", time: "Live",
         breaking: false, region: "National", verified: true,
       }));
       setSearchResults(results);
