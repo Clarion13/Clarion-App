@@ -9,26 +9,27 @@ const SUPA_URL = "https://qizqfeibqfqvfdzvqtin.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpenFmZWlicWZxdmZkenZxdGluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MjQ3MzcsImV4cCI6MjA4ODQwMDczN30.oBiHaOZYbNi6-PyoAFeE_eUoaPoesCB1TOrKK9Qr4TM";
 const supabase = createClient(SUPA_URL, SUPA_KEY);
 
-// ── PASTEL GREEN + CREAM — SOLID PROFESSIONAL ────────────────────
+// ── WARM PAPER + TERRACOTTA — REFINED ────────────────────────────
 const LIGHT = {
-  bg:"#FFFFFF", surface:"#F5F5F5", card:"#FFFFFF", border:"#E5E5E5",
-  divider:"#EDE9E0", text:"#1A1A18", sub:"#4A4A44", muted:"#9A9689",
-  orange:"#E8956D", accent:"#D4784A", accentSoft:"#FBEEE6",
-  left:"#7BAFC4", right:"#C47B7B", center:"#E8956D", breaking:"#C47B7B",
+  bg:"#FAF6F0", surface:"#F2ECE2", card:"#FFFFFF", border:"#EAE4DB",
+  divider:"#EAE4DB", text:"#1C1B19", sub:"#57544E", muted:"#94908A",
+  orange:"#D4784A", accent:"#BC6135", accentSoft:"#F4E3D7",
+  left:"#5B8FA8", right:"#B25E58", center:"#D98C5F", breaking:"#B25E58",
 };
 const DARK = {
-  bg:"#0F0F0F", surface:"#1A1A1A", card:"#1E1E1E", border:"#2A2A2A",
-  divider:"#252525", text:"#F0EDE8", sub:"#B0ACA6", muted:"#666260",
-  orange:"#E8956D", accent:"#D4784A", accentSoft:"#2A1A12",
-  left:"#7BAFC4", right:"#C47B7B", center:"#E8956D", breaking:"#C47B7B",
+  bg:"#15140F", surface:"#1E1C18", card:"#211F1A", border:"#2E2B25",
+  divider:"#2A2722", text:"#F3EFE8", sub:"#B5B0A8", muted:"#7A756D",
+  orange:"#E0916A", accent:"#D4784A", accentSoft:"#2A1C12",
+  left:"#6FA0B8", right:"#C47B72", center:"#E0916A", breaking:"#C47B72",
 };
 // C is set dynamically — see App component
 // C is a mutable ref — components always read the latest theme
 const C = { ...LIGHT };
 
 const F = {
-  display: "-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif",
-  text:    "-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif",
+  display: "'Space Grotesk', -apple-system, 'Helvetica Neue', sans-serif",
+  text:    "'Inter', -apple-system, 'Helvetica Neue', sans-serif",
+  mono:    "'Space Mono', ui-monospace, 'SF Mono', Menlo, monospace",
 };
 
 // Solid card style — no glass, no blur
@@ -142,6 +143,67 @@ function getSourceLean(sourceName) {
   return null;
 }
 
+// ── Image guarantee: a story always has something visual ──
+// Maps a string to a stable hue so each source/category gets a consistent placeholder.
+function hashHue(str="") {
+  let h = 0;
+  for (let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) % 360;
+  return h;
+}
+// Returns a CSS background for the fallback placeholder — warm, on-brand, deterministic.
+function placeholderBg(seed="") {
+  const hue = hashHue(seed);
+  // keep within warm/earthy band so it always reads on-brand
+  const h1 = 20 + (hue % 35);   // terracotta-ish
+  const h2 = 180 + (hue % 40);  // muted teal-ish for contrast
+  return `linear-gradient(135deg, hsl(${h1},42%,62%) 0%, hsl(${h2},22%,42%) 100%)`;
+}
+
+// ── Bias spectrum position: left=12%, center=50%, right=88% ──
+function leanPosition(l){ return l==="left" ? "16%" : l==="right" ? "84%" : "50%"; }
+function leanLabel(l){ return l==="left" ? "Left coverage" : l==="right" ? "Right coverage" : "Center coverage"; }
+
+// Full bias spectrum bar — the signature element
+function BiasSpectrum({ lean, compact=false }) {
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:compact?4:5}}>
+      <div style={{position:"relative",height:compact?5:6,borderRadius:4,
+        background:`linear-gradient(to right, ${C.left} 0%, ${C.center} 50%, ${C.right} 100%)`}}>
+        <div style={{position:"absolute",top:"50%",left:leanPosition(lean),
+          width:compact?10:12,height:compact?10:12,borderRadius:"50%",
+          background:"#fff",border:`2.5px solid ${C.text}`,transform:"translate(-50%,-50%)"}}/>
+      </div>
+      {!compact && (
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontFamily:F.mono,fontSize:8.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase"}}>Left</span>
+          <span style={{fontFamily:F.mono,fontSize:8.5,fontWeight:700,color:leanColor(lean),letterSpacing:"0.08em",textTransform:"uppercase"}}>{leanLabel(lean)}</span>
+          <span style={{fontFamily:F.mono,fontSize:8.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase"}}>Right</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Reusable story image with guaranteed fallback
+function StoryImage({ src, seed, height, radius=0, label }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div style={{height,borderRadius:radius,background:placeholderBg(seed),
+        display:"flex",alignItems:"flex-end",padding:10,position:"relative",overflow:"hidden"}}>
+        {label && <span style={{fontFamily:F.mono,fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.9)",
+          letterSpacing:"0.08em",textTransform:"uppercase"}}>{label}</span>}
+      </div>
+    );
+  }
+  return (
+    <div style={{height,borderRadius:radius,overflow:"hidden"}}>
+      <img src={src} alt="" onError={()=>setFailed(true)}
+        style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+    </div>
+  );
+}
+
 
 // Decode HTML entities in article text (e.g. &#8216; -> ' , &amp; -> &)
 function decodeHTML(str) {
@@ -212,6 +274,33 @@ function Spinner({ size=36, color=C.orange }) {
         <line x1="8"  y1="21" x2="11" y2="23" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
       </svg>
     </>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────
+// CLARION WORDMARK — SVG hand-drawn style (based on founder sketch)
+// ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// CLARION WORDMARK — text (matches live site)
+// ─────────────────────────────────────────────────────────────────
+function ClarionLogoFull({ height=40, color }) {
+  const size = height * 0.85;
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2,userSelect:"none"}}>
+      <div style={{
+        fontFamily:"'Times New Roman',Times,serif",
+        fontSize:size, fontWeight:700, color: color || C.text,
+        letterSpacing:"-0.06em", lineHeight:1,
+        display:"flex", alignItems:"baseline",
+      }}>
+        <span>Clar</span><span style={{fontStyle:"italic"}}>i</span><span>on.</span>
+      </div>
+      <span style={{fontFamily:F.mono,fontSize:8,fontWeight:700,color:C.orange,
+        letterSpacing:"0.2em",textTransform:"uppercase",paddingLeft:2,opacity:0.85}}>
+        Loud &amp; Clear
+      </span>
+    </div>
   );
 }
 
@@ -2558,6 +2647,20 @@ function ClarionFinal() {
     setLastUpdated(new Date());
   };
 
+  // Load Google Fonts (Space Grotesk display, Inter body, Space Mono data)
+  useEffect(()=>{
+    if (document.getElementById("clarion-fonts")) return;
+    const pre1 = document.createElement("link");
+    pre1.rel = "preconnect"; pre1.href = "https://fonts.googleapis.com";
+    const pre2 = document.createElement("link");
+    pre2.rel = "preconnect"; pre2.href = "https://fonts.gstatic.com"; pre2.crossOrigin = "anonymous";
+    const link = document.createElement("link");
+    link.id = "clarion-fonts";
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap";
+    document.head.appendChild(pre1); document.head.appendChild(pre2); document.head.appendChild(link);
+  },[]);
+
   useEffect(()=>{ loadAI(); },[]);
 
   // Human-readable "last updated" string
@@ -2651,14 +2754,7 @@ function ClarionFinal() {
         <div style={{maxWidth:640, margin:"0 auto", padding:"16px 20px 12px"}}>
           <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6}}>
             {/* Logo */}
-            <div style={{
-              fontFamily:"'Times New Roman',Times,serif",
-              fontSize:34, fontWeight:700, color:C.text,
-              letterSpacing:"-0.07em", lineHeight:1, userSelect:"none",
-              display:"flex", alignItems:"baseline",
-            }}>
-              <span>Clar</span><span style={{fontStyle:"italic"}}>i</span><span>on.</span>
-            </div>
+            <ClarionLogoFull height={40} color={darkMode ? C.orange : C.orange}/>
             {/* Right icons — search + circular refresh */}
             <div style={{display:"flex", gap:8, alignItems:"center"}}>
               <button onClick={()=>setShowSearch(v=>!v)} style={{
@@ -2674,8 +2770,8 @@ function ClarionFinal() {
               <button onClick={()=>{ if(navigator.vibrate) navigator.vibrate(10); loadAI(true); }} disabled={aiLoading} style={{
                 width:36,height:36,borderRadius:980,
                 display:"flex",alignItems:"center",justifyContent:"center",
-                background:"#E8956D", border:"none", cursor:"pointer",
-                boxShadow:"0 2px 10px rgba(232,149,109,0.45)",
+                background:C.orange, border:"none", cursor:"pointer",
+                boxShadow:"0 2px 10px rgba(212,120,74,0.4)",
                 opacity:aiLoading?0.6:1, transition:"all 0.2s", flexShrink:0,
               }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
@@ -2691,7 +2787,7 @@ function ClarionFinal() {
               <div style={{width:6,height:6,borderRadius:"50%",
                 background: aiLoading ? C.muted : "#5CB87A", flexShrink:0,
                 animation: aiLoading ? "none" : "pulse-dot 2s ease-in-out infinite"}}/>
-              <span style={{fontFamily:F.text, fontSize:11, color:C.muted}}>
+              <span style={{fontFamily:F.mono, fontSize:10, color:C.muted, letterSpacing:"0.06em", textTransform:"uppercase"}}>
                 {aiLoading ? "Refreshing…" : `Updated ${lastUpdatedLabel}`}
               </span>
             </div>
@@ -2751,17 +2847,18 @@ function ClarionFinal() {
                 {CATS.map(c => (
                   <button key={c} onClick={()=>setCategory(c)} style={{
                     flexShrink: 0,
-                    padding: "8px 20px",
-                    fontSize: 12,
-                    fontFamily: F.text,
-                    fontWeight: category===c ? 600 : 400,
+                    padding: "7px 15px",
+                    fontSize: 11,
+                    fontFamily: F.mono,
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
                     whiteSpace: "nowrap",
                     cursor: "pointer",
                     borderRadius: 980,
                     transition: "all 0.2s",
-                    border: `1px solid ${category===c ? C.border : C.divider}`,
-                    background: category===c ? C.card : C.surface,
-                    color: category===c ? C.text : C.muted,
+                    border: `1px solid ${category===c ? C.text : C.border}`,
+                    background: category===c ? C.text : C.card,
+                    color: category===c ? C.bg : C.muted,
                     boxShadow: "none",
                   }}>
                     {c}
@@ -2855,7 +2952,7 @@ function ClarionFinal() {
               return (
                 <>
                   {/* ── DATE HEADER ── */}
-                  <p style={{fontFamily:F.text,fontSize:11,fontWeight:600,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"4px 0 16px"}}>
+                  <p style={{fontFamily:F.mono,fontSize:10,fontWeight:700,color:C.muted,letterSpacing:"0.14em",textTransform:"uppercase",margin:"4px 0 16px"}}>
                     {new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}
                   </p>
 
@@ -2865,29 +2962,20 @@ function ClarionFinal() {
                   {hero && (
                     <div onClick={()=>{onRead(hero.id);if(navigator.vibrate)navigator.vibrate(6);setExpandedCard(v=>v===hero.id?null:hero.id);}}
                       style={{background:C.card,borderRadius:18,overflow:"hidden",border:`1px solid ${C.border}`,marginBottom:2,cursor:"pointer"}}>
-                      {hero.image&&(
-                        <div style={{height:220,overflow:"hidden",position:"relative"}}>
-                          <img src={hero.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={e=>e.target.style.display="none"}/>
-                          {/* gradient overlay so text is readable on image */}
-                          <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)"}}/>
-                          {/* badges over image */}
-                          <div style={{position:"absolute",bottom:12,left:14,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                            {hero.breaking&&<span style={{fontFamily:F.text,fontSize:9,fontWeight:800,color:"#fff",background:C.breaking,borderRadius:4,padding:"2px 7px",letterSpacing:"0.07em"}}>LIVE</span>}
-                            <span style={{fontFamily:F.text,fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.9)",background:"rgba(0,0,0,0.35)",borderRadius:6,padding:"2px 8px",backdropFilter:"blur(4px)"}}>{hero.source}</span>
-                            <span style={{fontFamily:F.text,fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.85)",background:leanColor(hero.lean)+"cc",borderRadius:6,padding:"2px 8px"}}>{hero.lean}</span>
-                          </div>
+                      <div style={{position:"relative"}}>
+                        <StoryImage src={hero.image} seed={hero.source+hero.category} height={210} label={!hero.image?hero.source:null}/>
+                        {/* gradient overlay so text is readable on image */}
+                        <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(20,12,6,0.62) 0%, transparent 56%)",pointerEvents:"none"}}/>
+                        {/* badges over image */}
+                        <div style={{position:"absolute",bottom:12,left:14,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                          {hero.breaking&&<span style={{fontFamily:F.mono,fontSize:8,fontWeight:700,color:"#fff",background:C.breaking,borderRadius:4,padding:"3px 7px",letterSpacing:"0.08em"}}>LIVE</span>}
+                          <span style={{fontFamily:F.mono,fontSize:9,fontWeight:700,color:"#fff",background:"rgba(0,0,0,0.42)",borderRadius:6,padding:"3px 8px",letterSpacing:"0.04em"}}>{hero.source}</span>
                         </div>
-                      )}
-                      <div style={{padding:"14px 16px 12px"}}>
-                        {!hero.image&&(
-                          <div style={{display:"flex",gap:6,marginBottom:7,flexWrap:"wrap"}}>
-                            {hero.breaking&&<span style={{fontFamily:F.text,fontSize:9,fontWeight:800,color:"#fff",background:C.breaking,borderRadius:4,padding:"2px 7px",letterSpacing:"0.07em"}}>LIVE</span>}
-                            <span style={{fontFamily:F.text,fontSize:11,fontWeight:600,color:C.accent}}>{hero.source}</span>
-                            <span style={{fontFamily:F.text,fontSize:10,color:leanColor(hero.lean),fontWeight:600,background:leanColor(hero.lean)+"18",borderRadius:6,padding:"1px 6px"}}>{hero.lean}</span>
-                          </div>
-                        )}
-                        <p style={{fontFamily:F.display,fontSize:21,fontWeight:800,color:C.text,margin:"0 0 7px",lineHeight:1.2,letterSpacing:"-0.025em"}}>{decodeHTML(hero.headline)}</p>
-                        {hero.summary&&<p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:0,lineHeight:1.65,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(hero.summary)}</p>}
+                      </div>
+                      <div style={{padding:"14px 16px 13px"}}>
+                        <p style={{fontFamily:F.display,fontSize:21,fontWeight:700,color:C.text,margin:"0 0 8px",lineHeight:1.18,letterSpacing:"-0.025em"}}>{decodeHTML(hero.headline)}</p>
+                        {hero.summary&&<p style={{fontFamily:F.text,fontSize:13,color:C.sub,margin:"0 0 13px",lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(hero.summary)}</p>}
+                        <BiasSpectrum lean={hero.lean}/>
                       </div>
                       {expandedCard===hero.id&&<div style={{padding:"0 16px 14px"}}><ActionRow a={hero}/></div>}
                     </div>
@@ -2906,14 +2994,14 @@ function ClarionFinal() {
                             <div onClick={()=>{onRead(a.id);if(navigator.vibrate)navigator.vibrate(6);setExpandedCard(v=>v===a.id?null:a.id);}}
                               style={{display:"flex",gap:12,padding:"13px 14px",borderBottom:isOpen||i<topRest.length-1?`1px solid ${C.divider}`:"none",cursor:"pointer",alignItems:"flex-start"}}>
                               {/* rank number */}
-                              <span style={{fontFamily:F.display,fontSize:15,fontWeight:800,color:C.divider,width:20,flexShrink:0,paddingTop:1}}>{i+2}</span>
+                              <span style={{fontFamily:F.display,fontSize:15,fontWeight:700,color:C.muted,opacity:0.5,width:18,flexShrink:0,paddingTop:1}}>{i+2}</span>
                               {/* lean bar */}
                               <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:lc,flexShrink:0,marginTop:3}}/>
                               <div style={{flex:1,minWidth:0}}>
-                                <p style={{fontFamily:F.text,fontSize:10,color:C.muted,margin:"0 0 3px"}}>{a.source} · <span style={{color:lc,fontWeight:700}}>{a.lean}</span> · {a.category}</p>
-                                <p style={{fontFamily:F.display,fontSize:14,fontWeight:700,color:C.text,margin:0,lineHeight:1.35,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(a.headline)}</p>
+                                <p style={{fontFamily:F.mono,fontSize:9,color:C.muted,margin:"0 0 4px",letterSpacing:"0.03em"}}>{a.source} · <span style={{color:lc,fontWeight:700}}>{(a.lean||"center").toUpperCase()}</span></p>
+                                <p style={{fontFamily:F.display,fontSize:14,fontWeight:600,color:C.text,margin:0,lineHeight:1.32,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(a.headline)}</p>
                               </div>
-                              {a.image&&<img src={a.image} alt="" style={{width:60,height:60,borderRadius:10,objectFit:"cover",flexShrink:0}} onError={e=>e.target.style.display="none"}/>}
+                              <div style={{width:56,height:56,flexShrink:0}}><StoryImage src={a.image} seed={a.source+a.id} height={56} radius={9}/></div>
                             </div>
                             {isOpen&&<div style={{padding:"0 14px 12px"}}><ActionRow a={a}/></div>}
                           </div>
@@ -2937,26 +3025,18 @@ function ClarionFinal() {
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
                             <div style={{width:3,height:16,borderRadius:2,background:C.orange}}/>
-                            <p style={{fontFamily:F.display,fontSize:17,fontWeight:800,color:C.text,margin:0,letterSpacing:"-0.02em"}}>{cat}</p>
+                            <p style={{fontFamily:F.display,fontSize:18,fontWeight:700,color:C.text,margin:0,letterSpacing:"-0.02em"}}>{cat}</p>
                           </div>
-                          <button onClick={()=>setCategory(cat)} style={{fontFamily:F.text,fontSize:12,color:C.accent,background:"none",border:"none",cursor:"pointer",fontWeight:600,padding:0}}>See all →</button>
+                          <button onClick={()=>setCategory(cat)} style={{fontFamily:F.mono,fontSize:10,color:C.orange,background:"none",border:"none",cursor:"pointer",fontWeight:700,padding:0,letterSpacing:"0.06em",textTransform:"uppercase"}}>See all</button>
                         </div>
 
                         {/* Lead card */}
                         <div onClick={()=>{onRead(lead.id);if(navigator.vibrate)navigator.vibrate(6);setExpandedCard(v=>v===lead.id?null:lead.id);}}
                           style={{background:C.card,borderRadius:14,overflow:"hidden",border:`1px solid ${C.border}`,borderLeft:`3px solid ${leadLC}`,marginBottom:rest.length?1:0,cursor:"pointer"}}>
-                          {lead.image&&(
-                            <div style={{height:150,overflow:"hidden"}}>
-                              <img src={lead.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={e=>e.target.style.display="none"}/>
-                            </div>
-                          )}
+                          <StoryImage src={lead.image} seed={lead.source+lead.category} height={140} label={!lead.image?lead.source:null}/>
                           <div style={{padding:"11px 13px"}}>
-                            <div style={{display:"flex",gap:5,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                              <span style={{fontFamily:F.text,fontSize:10,fontWeight:600,color:C.accent}}>{lead.source}</span>
-                              <span style={{color:C.divider}}>·</span>
-                              <span style={{fontFamily:F.text,fontSize:10,color:leadLC,fontWeight:600}}>{lead.lean}</span>
-                            </div>
-                            <p style={{fontFamily:F.display,fontSize:15,fontWeight:700,color:C.text,margin:0,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(lead.headline)}</p>
+                            <p style={{fontFamily:F.mono,fontSize:9,marginBottom:5,letterSpacing:"0.03em"}}><span style={{color:C.muted}}>{lead.source}</span> · <span style={{color:leadLC,fontWeight:700}}>{(lead.lean||"center").toUpperCase()}</span></p>
+                            <p style={{fontFamily:F.display,fontSize:15,fontWeight:600,color:C.text,margin:0,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(lead.headline)}</p>
                           </div>
                           {expandedCard===lead.id&&(
                             <div style={{padding:"0 13px 12px"}} onClick={e=>e.stopPropagation()}>
@@ -2978,10 +3058,10 @@ function ClarionFinal() {
                                     style={{display:"flex",gap:10,padding:"11px 13px",borderTop:`1px solid ${C.divider}`,cursor:"pointer",alignItems:"flex-start"}}>
                                     <div style={{width:2,alignSelf:"stretch",borderRadius:2,background:lc,flexShrink:0,marginTop:3}}/>
                                     <div style={{flex:1,minWidth:0}}>
-                                      <p style={{fontFamily:F.text,fontSize:10,color:C.muted,margin:"0 0 2px"}}>{a.source} · <span style={{color:lc,fontWeight:600}}>{a.lean}</span></p>
+                                      <p style={{fontFamily:F.mono,fontSize:9,color:C.muted,margin:"0 0 3px",letterSpacing:"0.03em"}}>{a.source} · <span style={{color:lc,fontWeight:700}}>{(a.lean||"center").toUpperCase()}</span></p>
                                       <p style={{fontFamily:F.display,fontSize:13,fontWeight:600,color:C.text,margin:0,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{decodeHTML(a.headline)}</p>
                                     </div>
-                                    {a.image&&<img src={a.image} alt="" style={{width:50,height:50,borderRadius:8,objectFit:"cover",flexShrink:0}} onError={e=>e.target.style.display="none"}/>}
+                                    <div style={{width:48,height:48,flexShrink:0}}><StoryImage src={a.image} seed={a.source+a.id} height={48} radius={8}/></div>
                                   </div>
                                   {isOpen&&<div style={{padding:"0 13px 10px"}}><ActionRow a={a}/></div>}
                                 </div>
@@ -3312,12 +3392,7 @@ function ClarionFinal() {
             {/* ── ABOUT CLARION ── */}
             <div style={{marginBottom:40}}>
               <div style={{textAlign:"center",marginBottom:24}}>
-                <p style={{fontFamily:"'Times New Roman',Times,serif",fontSize:32,fontWeight:700,
-                  color:C.text,letterSpacing:"-0.06em",margin:"0 0 4px",lineHeight:1}}>
-                  Clar<span style={{fontStyle:"italic"}}>i</span>on.
-                </p>
-                <p style={{fontFamily:F.text,fontSize:11,fontWeight:500,color:C.muted,
-                  letterSpacing:"0.12em",textTransform:"uppercase",margin:0}}>Loud &amp; Clear</p>
+                <ClarionLogoFull height={52} color={C.orange}/>
               </div>
 
               {/* Mission */}
@@ -3431,9 +3506,9 @@ function ClarionFinal() {
                   </svg>
                 </div>
                 <span style={{
-                  fontFamily:F.text, fontSize:10, fontWeight: active ? 700 : 400,
-                  color: active ? C.text : C.muted,
-                  letterSpacing:"0.01em",
+                  fontFamily:F.mono, fontSize:8, fontWeight:700,
+                  color: active ? C.orange : C.muted,
+                  letterSpacing:"0.08em", textTransform:"uppercase",
                   transition:"all 0.18s",
                 }}>
                   {n.label}
